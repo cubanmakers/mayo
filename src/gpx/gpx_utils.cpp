@@ -32,7 +32,7 @@ bool GpxUtils::V3dView_hasClipPlane(
 
     for (Graphic3d_SequenceOfHClipPlane::Iterator it(*seqClipPlane); it.More(); it.Next()) {
         const Handle_Graphic3d_ClipPlane& candidate = it.Value();
-        if (candidate.operator->() == plane.operator->())
+        if (candidate.get() == plane.get())
             return true;
     }
 

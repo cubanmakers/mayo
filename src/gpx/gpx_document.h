@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../base/document.h"
 #include "../base/property_builtins.h"
 #include "../base/property_enumeration.h"
 
@@ -15,15 +16,13 @@
 
 namespace Mayo {
 
-class DocumentItem;
-
-class GpxDocumentItem : public PropertyOwner {
-    Q_DECLARE_TR_FUNCTIONS(Mayo::GpxDocumentItem)
+class GpxDocument : public PropertyOwner {
+    Q_DECLARE_TR_FUNCTIONS(Mayo::GpxDocument)
 public:
-    GpxDocumentItem();
-    virtual ~GpxDocumentItem() = default;
+    GpxDocument(const DocumentPtr& docPtr);
+    virtual ~GpxDocument() = default;
 
-    virtual DocumentItem* documentItem() const = 0;
+    DocumentPtr document() const;
 
     const Handle_AIS_InteractiveContext& context() const { return m_ctx; }
     void setContext(const Handle_AIS_InteractiveContext& ctx) { m_ctx = ctx; }
@@ -47,6 +46,7 @@ protected:
 
 private:
     Handle_AIS_InteractiveContext m_ctx;
+    DocumentPtr m_docPtr;
 };
 
 } // namespace Mayo

@@ -6,6 +6,123 @@
 
 #include "application.h"
 
+#if 1
+#include <fougtools/occtools/qt_utils.h>
+
+#include <BinXCAFDrivers_DocumentRetrievalDriver.hxx>
+#include <BinXCAFDrivers_DocumentStorageDriver.hxx>
+#include <STEPCAFControl_Controller.hxx>
+#include <XCAFApp_Application.hxx>
+#include <XmlXCAFDrivers_DocumentRetrievalDriver.hxx>
+#include <XmlXCAFDrivers_DocumentStorageDriver.hxx>
+
+namespace Mayo {
+
+class Document::FormatBinaryRetrievalDriver : public BinXCAFDrivers_DocumentRetrievalDriver {
+public:
+    opencascade::handle<CDM_Document> CreateDocument() override { return new Document;  }
+};
+
+class Document::FormatXmlRetrievalDriver : public XmlXCAFDrivers_DocumentRetrievalDriver {
+public:
+    opencascade::handle<CDM_Document> CreateDocument() override { return new Document; }
+};
+
+ApplicationPtr Application::instance()
+{
+    static ApplicationPtr appPtr;
+    if (appPtr.IsNull()) {
+        appPtr = new Application;
+        STEPCAFControl_Controller::Init();
+        const char strFougueCopyright[] = "Copyright (c) 2020, Fougue Ltd. <http://www.fougue.pro>";
+        appPtr->DefineFormat(
+                    Document::NameFormatBinary, qUtf8Printable(tr("Binary Mayo Document Format")), "myb",
+                    new Document::FormatBinaryRetrievalDriver,
+                    new BinXCAFDrivers_DocumentStorageDriver);
+        appPtr->DefineFormat(
+                    Document::NameFormatXml, qUtf8Printable(tr("XML Mayo Document Format")), "myx",
+                    new Document::FormatXmlRetrievalDriver,
+                    new XmlXCAFDrivers_DocumentStorageDriver(strFougueCopyright));
+    }
+
+    return appPtr;
+}
+
+DocumentPtr Application::newDocument(Document::Format docFormat)
+{
+    const char* docNameFormat = Document::toNameFormat(docFormat);
+    Handle_TDocStd_Document stdDoc;
+    this->NewDocument(docNameFormat, stdDoc);
+    return DocumentPtr::DownCast(stdDoc);
+}
+
+DocumentPtr Application::openDocument(const QString& filePath, PCDM_ReaderStatus* ptrReadStatus)
+{
+    Handle_TDocStd_Document stdDoc;
+    const PCDM_ReaderStatus readStatus = this->Open(occ::QtUtils::toOccExtendedString(filePath), stdDoc);
+    if (ptrReadStatus)
+        *ptrReadStatus = readStatus;
+
+    DocumentPtr doc = DocumentPtr::DownCast(stdDoc);
+    this->addDocument(doc);
+    return doc;
+}
+
+DocumentPtr Application::findByIdentifier(Document::Identifier docIdent) const
+{
+    auto itFound = m_mapIdentifierDocument.find(docIdent);
+    return itFound != m_mapIdentifierDocument.cend() ? itFound->second : DocumentPtr();
+}
+
+void Application::NewDocument(
+        const TCollection_ExtendedString& format,
+        opencascade::handle<TDocStd_Document>& outDocument)
+{
+    //std::lock_guard<std::mutex> lock(Internal::mutex_XCAFApplication);
+    //XCAFApp_Application::GetApplication()->NewDocument(format, outDocument);
+
+    // TODO: check format == "mayo" if not throw exception
+    // Extended from TDocStd_Application::NewDocument() implementation, ensure that in future
+    // OpenCascade versions this code is still compatible!
+    DocumentPtr newDoc = new Document;
+    CDF_Application::Open(newDoc); // Add the document in the session
+    this->addDocument(newDoc);
+    outDocument = newDoc;
+}
+
+void Application::InitDocument(const opencascade::handle<TDocStd_Document>& doc) const
+{
+    TDocStd_Application::InitDocument(doc);
+    XCAFApp_Application::GetApplication()->InitDocument(doc);
+}
+
+Application::Application()
+    : QObject(nullptr)
+{
+}
+
+void Application::notifyDocumentAboutToClose(Document::Identifier docIdent)
+{
+    auto itFound = m_mapIdentifierDocument.find(docIdent);
+    if (itFound != m_mapIdentifierDocument.end()) {
+        emit this->documentAboutToClose(itFound->second);
+        m_mapIdentifierDocument.erase(itFound);
+    }
+}
+
+void Application::addDocument(const DocumentPtr& doc)
+{
+    if (!doc.IsNull()) {
+        doc->setIdentifier(m_seqDocumentIdentifier.fetch_add(1));
+        m_mapIdentifierDocument.insert({ doc->identifier(), doc });
+        this->InitDocument(doc);
+        doc->initXCaf();
+        emit documentAdded(doc);
+    }
+}
+
+} // namespace Mayo
+#else
 #include "document.h"
 #include "document_item.h"
 #include "caf_utils.h"
@@ -396,12 +513,7 @@ static Application::PartFormat findPartFormatFromContents(
 
 } // namespace Internal
 
-Application::Application(QObject *parent)
-    : QObject(parent)
-{
-}
-
-Application *Application::instance()
+Application* Application::instance()
 {
     static Application app;
     return &app;
@@ -961,3 +1073,4 @@ Application::IoResult Application::exportStl_OCC(
 }
 
 } // namespace Mayo
+#endif

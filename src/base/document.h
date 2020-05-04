@@ -6,49 +6,149 @@
 
 #pragma once
 
-#include "application.h"
-#include "property_builtins.h"
+
+#include "libtree.h"
+#include "quantity.h"
 #include <QtCore/QObject>
-#include <vector>
+#include <TDocStd_Document.hxx>
+#include <XCAFDoc_ColorTool.hxx>
+#include <XCAFDoc_ShapeTool.hxx>
 
 namespace Mayo {
 
-class DocumentItem;
-
-class Document : public PropertyOwnerSignals {
-    Q_OBJECT
+class XCaf {
 public:
-    Document(QObject* parent = Application::instance());
-    virtual ~Document();
+    struct ValidationProperties {
+        bool hasCentroid;
+        bool hasArea;
+        bool hasVolume;
+        gp_Pnt centroid;
+        QuantityArea area;
+        QuantityVolume volume;
+    };
 
-    const QString& label() const;
-    void setLabel(const QString& v);
+    bool isNull() const { return m_shapeTool.IsNull(); }
 
-    const QString& filePath() const;
+    const Handle_XCAFDoc_ShapeTool& shapeTool() const { return m_shapeTool; }
+    const Handle_XCAFDoc_ColorTool& colorTool() const { return m_colorTool; }
+
+    void rebuildAssemblyTree();
+    const Tree<TDF_Label>& assemblyTree() const { return m_asmTree; }
+
+    TDF_LabelSequence topLevelFreeShapes() const;
+    static TDF_LabelSequence shapeComponents(const TDF_Label& lbl);
+    static TDF_LabelSequence shapeSubs(const TDF_Label& lbl);
+
+    static TopoDS_Shape shape(const TDF_Label& lbl);
+    static bool isShape(const TDF_Label& lbl);
+    static bool isShapeFree(const TDF_Label& lbl);
+    static bool isShapeAssembly(const TDF_Label& lbl);
+    static bool isShapeReference(const TDF_Label& lbl);
+    static bool isShapeSimple(const TDF_Label& lbl);
+    static bool isShapeComponent(const TDF_Label& lbl);
+    static bool isShapeCompound(const TDF_Label& lbl);
+    static bool isShapeSub(const TDF_Label& lbl);
+
+    bool hasShapeColor(const TDF_Label& lbl) const;
+    Quantity_Color shapeColor(const TDF_Label& lbl) const;
+
+    TopLoc_Location shapeAbsoluteLocation(TreeNodeId nodeId) const;
+    static TopLoc_Location shapeReferenceLocation(const TDF_Label& lbl);
+    static TDF_Label shapeReferred(const TDF_Label& lbl);
+
+    static ValidationProperties validationProperties(const TDF_Label& lbl);
+
+private:
+    void deepBuildAssemblyTree(TreeNodeId parentNode, const TDF_Label& label);
+
+    friend class Document;
+    Handle_XCAFDoc_ShapeTool m_shapeTool;
+    Handle_XCAFDoc_ColorTool m_colorTool;
+    Tree<TDF_Label> m_asmTree;
+};
+
+
+class Application;
+class Document;
+DEFINE_STANDARD_HANDLE(Document, TDocStd_Document)
+
+using DocumentPtr = opencascade::handle<Document>;
+
+class Document : public QObject, public TDocStd_Document {
+    Q_OBJECT
+    Q_PROPERTY(int identifier READ identifier)
+    Q_PROPERTY(QString name READ name WRITE setName)
+    Q_PROPERTY(bool isXCafDocument READ isXCafDocument)
+public:
+    using Identifier = int;
+    enum class Format {
+        Binary,
+        Xml
+    };
+
+    Identifier identifier() const { return m_identifier; }
+
+    QString name() const;
+    void setName(const QString& v);
+
+    QString filePath() const;
     void setFilePath(const QString& filepath);
 
-    void addRootItem(DocumentItem* item);
-    bool eraseRootItem(DocumentItem* docItem);
-
-    Span<DocumentItem* const> rootItems() const;
-    bool isEmpty() const;
-
-    PropertyQString propertyLabel;
-    PropertyQString propertyFilePath;
+    static const char NameFormatBinary[];
+    static const char NameFormatXml[];
+    static const char* toNameFormat(Format format);
 
     static const char TypeName[];
     virtual const char* dynTypeName() const;
 
+    static QString findLabelName(const TDF_Label& lbl);
+    static void setLabelName(const TDF_Label& lbl, const QString& name);
+
+    bool isXCafDocument() const;
+    XCaf& xcaf() { return m_xcaf; }
+    const XCaf& xcaf() const { return m_xcaf; }
+
+public: // -- from TDocStd_Document
+    void BeforeClose() override;
+    void ChangeStorageFormat(const TCollection_ExtendedString& newStorageFormat) override;
+
+    DEFINE_STANDARD_RTTIEXT(Document, TDocStd_Document)
+
 signals:
-    void itemAdded(DocumentItem* docItem);
-    void itemErased(const DocumentItem* docItem);
-    void itemPropertyChanged(DocumentItem* docItem, Property* prop);
+//    void itemAdded(DocumentItem* docItem);
+//    void itemErased(const DocumentItem* docItem);
+//    void itemPropertyChanged(DocumentItem* docItem, Property* prop);
 
 private:
     friend class Application;
-    friend class DocumentItem;
+    class FormatBinaryRetrievalDriver;
+    class FormatXmlRetrievalDriver;
 
-    std::vector<DocumentItem*> m_rootItems;
+    Document();
+    void initXCaf();
+    void setIdentifier(Identifier ident) { m_identifier = ident; }
+
+    Identifier m_identifier = -1;
+    QString m_name;
+    QString m_filePath;
+
+    XCaf m_xcaf;
+};
+
+struct DocumentTreeNode {
+    DocumentTreeNode() = default;
+    DocumentTreeNode(const DocumentPtr& docPtr, TreeNodeId nodeId)
+        : document(docPtr), id(nodeId)
+    { }
+
+    bool isValid() const { return !this->document.IsNull() && this->id != 0; }
+    static const DocumentTreeNode& null() {
+        static const DocumentTreeNode node = {};
+        return node;
+    }
+
+    DocumentPtr document;
+    TreeNodeId id;
 };
 
 } // namespace Mayo

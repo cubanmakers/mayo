@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "gpx_document_item.h"
+#include "gpx_document.h"
 #include "../base/mesh_item.h"
 #include <MeshVS_Mesh.hxx>
 #include <QtGui/QColor>

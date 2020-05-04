@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../gpx/gpx_document_item.h"
+#include "../gpx/gpx_document.h"
 
 #include <QtCore/QObject>
 #include <AIS_InteractiveContext.hxx>

@@ -4,6 +4,7 @@
 ** See license at https://github.com/fougue/mayo/blob/master/LICENSE.txt
 ****************************************************************************/
 
+#if 0
 #pragma once
 
 #include "document_item.h"
@@ -90,3 +91,4 @@ private:
 };
 
 } // namespace Mayo
+#endif

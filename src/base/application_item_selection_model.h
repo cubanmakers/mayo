@@ -33,8 +33,7 @@ public:
 
 signals:
     void cleared();
-    void changed(Span<ApplicationItem> selected,
-                 Span<ApplicationItem> deselected);
+    void changed(Span<ApplicationItem> selected, Span<ApplicationItem> deselected);
 
 private:
     std::vector<ApplicationItem> m_vecSelectedItem;

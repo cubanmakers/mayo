@@ -6,6 +6,57 @@
 
 #pragma once
 
+#if 1
+#include "document.h"
+#include <TDocStd_Application.hxx>
+#include <atomic>
+#include <unordered_map>
+
+namespace Mayo {
+
+class Application;
+DEFINE_STANDARD_HANDLE(Application, TDocStd_Application)
+
+using ApplicationPtr = opencascade::handle<Application>;
+
+class Application : public QObject, public TDocStd_Application {
+    Q_OBJECT
+public:
+    static ApplicationPtr instance();
+
+    DocumentPtr newDocument(Document::Format docFormat);
+    DocumentPtr openDocument(const QString& filePath, PCDM_ReaderStatus* ptrReadStatus = nullptr);
+    DocumentPtr findByIdentifier(Document::Identifier docIdent) const;
+
+public: //  from TDocStd_Application
+    void NewDocument(
+            const TCollection_ExtendedString& format,
+            opencascade::handle<TDocStd_Document>& outDoc) override;
+    void InitDocument(const opencascade::handle<TDocStd_Document>& doc) const override;
+
+// TODO: Redefine TDocStd_Document::BeforeClose() to emit signal documentClosed
+// class Document : public TDocStd_Document { ... };
+// using DocumentPtr = Handle_Document
+// -> Can't do because PCDM_RetrievalDriver subclasses create explicitly "new TDocStd_Document(...)"
+//    This would break TDocStd_Application::Open(...)
+
+signals:
+    void documentAdded(const DocumentPtr& doc);
+    void documentAboutToClose(const DocumentPtr& doc);
+
+private: // Implementation
+    friend class Document;
+
+    Application();
+    void notifyDocumentAboutToClose(Document::Identifier docIdent);
+    void addDocument(const DocumentPtr& doc);
+
+    std::atomic<Document::Identifier> m_seqDocumentIdentifier = {};
+    std::unordered_map<Document::Identifier, DocumentPtr> m_mapIdentifierDocument;
+};
+
+} // namespace Mayo
+#else
 #include "application_item.h"
 #include "result.h"
 #include "span.h"
@@ -24,7 +75,6 @@ namespace qttask { class Progress; }
 namespace Mayo {
 
 class Document;
-class DocumentItem;
 class Property;
 
 class Application : public QObject {
@@ -154,3 +204,4 @@ private:
 };
 
 } // namespace Mayo
+#endif
