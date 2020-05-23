@@ -6,9 +6,6 @@
 
 #include "../base/application.h"
 #include "../base/unit_system.h"
-#include "../gpx/gpx_document_item_factory.h"
-#include "../gpx/gpx_mesh_item.h"
-#include "../gpx/gpx_xde_document_item.h"
 #include "mainwindow.h"
 #include "settings.h"
 #include "settings_keys.h"

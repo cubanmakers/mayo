@@ -48,6 +48,11 @@ ApplicationPtr Application::instance()
     return appPtr;
 }
 
+int Application::documentCount() const
+{
+    return this->NbDocuments();
+}
+
 DocumentPtr Application::newDocument(Document::Format docFormat)
 {
     const char* docNameFormat = Document::toNameFormat(docFormat);
@@ -68,10 +73,29 @@ DocumentPtr Application::openDocument(const QString& filePath, PCDM_ReaderStatus
     return doc;
 }
 
-DocumentPtr Application::findByIdentifier(Document::Identifier docIdent) const
+DocumentPtr Application::findDocumentByIndex(int docIndex) const
+{
+    Handle_TDocStd_Document doc;
+    TDocStd_Application::GetDocument(docIndex, doc);
+    return !doc.IsNull() ? DocumentPtr::DownCast(doc) : DocumentPtr();
+}
+
+DocumentPtr Application::findDocumentByIdentifier(Document::Identifier docIdent) const
 {
     auto itFound = m_mapIdentifierDocument.find(docIdent);
     return itFound != m_mapIdentifierDocument.cend() ? itFound->second : DocumentPtr();
+}
+
+DocumentPtr Application::findDocumentByLocation(const QFileInfo& loc) const
+{
+    const QString locAbsoluteFilePath = loc.absoluteFilePath();
+    for (const auto& mapPair : m_mapIdentifierDocument) {
+        const DocumentPtr& docPtr = mapPair.second;
+        if (QFileInfo(docPtr->filePath()).absoluteFilePath() == locAbsoluteFilePath)
+            return docPtr;
+    }
+
+    return DocumentPtr();
 }
 
 void Application::NewDocument(

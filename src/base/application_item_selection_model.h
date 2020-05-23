@@ -8,7 +8,6 @@
 
 #include "application_item.h"
 #include "span.h"
-#include <vector>
 
 namespace Mayo {
 
@@ -18,9 +17,6 @@ public:
     ApplicationItemSelectionModel(QObject* parent = nullptr);
 
     Span<const ApplicationItem> selectedItems() const;
-
-    bool hasSelectedDocumentItems() const;
-    std::vector<DocumentItem*> selectedDocumentItems() const;
 
     void add(const ApplicationItem& item);
     void add(Span<ApplicationItem> vecItem);

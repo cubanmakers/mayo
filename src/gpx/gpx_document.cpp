@@ -27,6 +27,7 @@
 ** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****************************************************************************/
 
+#if 0
 #include "gpx_document.h"
 #include "../base/occt_enums.h"
 
@@ -64,7 +65,7 @@ std::vector<Handle_SelectMgr_EntityOwner> GpxDocument::entityOwners(int /*mode*/
     return std::vector<Handle_SelectMgr_EntityOwner>();
 }
 
-void GpxDocument::onPropertyChanged(Property *prop)
+void GpxDocument::onPropertyChanged(Property* prop)
 {
     if (prop == &this->propertyIsVisible) {
         this->setVisible(this->propertyIsVisible.value());
@@ -86,3 +87,4 @@ void GpxDocument::getEntityOwners(
 }
 
 } // namespace Mayo
+#endif

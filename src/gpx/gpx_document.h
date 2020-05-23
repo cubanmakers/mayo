@@ -4,6 +4,7 @@
 ** See license at https://github.com/fougue/mayo/blob/master/LICENSE.txt
 ****************************************************************************/
 
+#if 0
 #pragma once
 
 #include "../base/document.h"
@@ -13,6 +14,7 @@
 #include <QtCore/QCoreApplication>
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_InteractiveObject.hxx>
+#include <Standard_Version.hxx>
 
 namespace Mayo {
 
@@ -50,3 +52,4 @@ private:
 };
 
 } // namespace Mayo
+#endif

@@ -4,6 +4,7 @@
 ** See license at https://github.com/fougue/mayo/blob/master/LICENSE.txt
 ****************************************************************************/
 
+#if 0
 #pragma once
 
 #include "gpx_document.h"
@@ -50,3 +51,4 @@ private:
 };
 
 } // namespace Mayo
+#endif

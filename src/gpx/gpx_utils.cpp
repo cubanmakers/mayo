@@ -151,16 +151,14 @@ void GpxUtils::Gpx3dClipPlane_setCappingHatch(
     plane->SetCappingHatch(hatch);
 }
 
-void GpxUtils::Gpx3dClipPlane_setNormal(
-        const Handle_Graphic3d_ClipPlane& plane, const gp_Dir &n)
+void GpxUtils::Gpx3dClipPlane_setNormal(const Handle_Graphic3d_ClipPlane& plane, const gp_Dir& n)
 {
     const double planePos = MathUtils::planePosition(plane->ToPlane());
     const gp_Vec placement(planePos * gp_Vec(n));
     plane->SetEquation(gp_Pln(placement.XYZ(), n));
 }
 
-void GpxUtils::Gpx3dClipPlane_setPosition(
-        const Handle_Graphic3d_ClipPlane& plane, double pos)
+void GpxUtils::Gpx3dClipPlane_setPosition(const Handle_Graphic3d_ClipPlane& plane, double pos)
 {
     const gp_Dir& n = plane->ToPlane().Axis().Direction();
     if (MathUtils::isReversedStandardDir(n))

@@ -335,16 +335,13 @@ MainWindow::MainWindow(QWidget *parent)
     // Creation of annex objects
     {
         // Opened documents GUI
-        auto listViewBtns =
-                new qtgui::ItemViewButtons(m_ui->listView_OpenedDocuments, this);
+        auto listViewBtns = new qtgui::ItemViewButtons(m_ui->listView_OpenedDocuments, this);
         listViewBtns->addButton(
                     1, mayoTheme()->icon(Theme::Icon::Cross), m_ui->actionCloseDoc->toolTip());
         listViewBtns->setButtonDetection(1, -1, QVariant());
         listViewBtns->setButtonDisplayColumn(1, 0);
-        listViewBtns->setButtonDisplayModes(
-                    1, qtgui::ItemViewButtons::DisplayOnDetection);
-        listViewBtns->setButtonItemSide(
-                    1, qtgui::ItemViewButtons::ItemRightSide);
+        listViewBtns->setButtonDisplayModes(1, qtgui::ItemViewButtons::DisplayOnDetection);
+        listViewBtns->setButtonItemSide(1, qtgui::ItemViewButtons::ItemRightSide);
         const int iconSize = this->style()->pixelMetric(QStyle::PM_ListViewIconSize);
         listViewBtns->setButtonIconSize(1, QSize(iconSize * 0.66, iconSize * 0.66));
         listViewBtns->installDefaultItemDelegate();
@@ -446,9 +443,8 @@ void MainWindow::showEvent(QShowEvent* event)
 void MainWindow::newDocument()
 {
     static unsigned docSequenceId = 0;
-    auto doc = new Document;
-    doc->setLabel(tr("Anonymous%1").arg(++docSequenceId));
-    Application::instance()->addDocument(doc);
+    auto docPtr = Application::instance()->newDocument(Document::Format::Binary);
+    docPtr->setName(tr("Anonymous%1").arg(++docSequenceId));
 }
 
 void MainWindow::openDocuments()
@@ -615,16 +611,17 @@ void MainWindow::inspectXde()
 {
     const Span<const ApplicationItem> spanAppItem =
             GuiApplication::instance()->selectionModel()->selectedItems();
-    const XdeDocumentItem* xdeDocItem = nullptr;
+    DocumentPtr xcafDoc;
     for (const ApplicationItem& appItem : spanAppItem) {
-        xdeDocItem = dynamic_cast<const XdeDocumentItem*>(appItem.documentItem());
-        if (xdeDocItem)
+        if (appItem.document()->isXCafDocument()) {
+            xcafDoc = appItem.document();
             break;
+        }
     }
 
-    if (xdeDocItem) {
+    if (!xcafDoc.IsNull()) {
         auto dlg = new DialogInspectXde(this);
-        dlg->load(xdeDocItem->cafDoc());
+        dlg->load(xcafDoc);
         qtgui::QWidgetUtils::asyncDialogExec(dlg);
     }
 }
@@ -669,7 +666,7 @@ void MainWindow::onApplicationItemSelectionChanged()
     Span<const ApplicationItem> spanAppItem = GuiApplication::instance()->selectionModel()->selectedItems();
     if (spanAppItem.size() == 1) {
         const ApplicationItem& item = spanAppItem.at(0);
-        if (item.isDocumentItemNode()) {
+        if (item.isDocumentTreeNode()) {
             m_ptrCurrentNodeProperties = item.documentItem()->propertiesAtNode(item.documentItemNode().id);
             PropertyOwnerSignals* nodeProps = m_ptrCurrentNodeProperties.get();
             uiProps->editProperties(nodeProps);
@@ -751,7 +748,7 @@ void MainWindow::onGuiDocumentAdded(GuiDocument* guiDoc)
     QTimer::singleShot(0, [=]{ this->setCurrentDocumentIndex(newDocIndex); });
 }
 
-void MainWindow::onWidgetFileSystemLocationActivated(const QFileInfo &loc)
+void MainWindow::onWidgetFileSystemLocationActivated(const QFileInfo& loc)
 {
     this->openDocumentsFromList(QStringList(loc.absoluteFilePath()));
 }
@@ -791,17 +788,16 @@ void MainWindow::onCurrentDocumentIndexChanged(int idx)
         }
         return filepath;
     };
-    const Document* doc = Application::instance()->documentAt(idx);
+    const DocumentPtr docPtr = Application::instance()->findDocumentByIndex(idx);
     const QString textActionClose =
-            doc ?
-                tr("Close %1").arg(funcFilepathQuoted(doc->label())) :
+            docPtr ?
+                tr("Close %1").arg(funcFilepathQuoted(docPtr->name())) :
                 tr("Close");
     const QString textActionCloseAllExcept =
-            doc ?
-                tr("Close all except %1").arg(funcFilepathQuoted(doc->label())) :
+            docPtr ?
+                tr("Close all except %1").arg(funcFilepathQuoted(docPtr->name())) :
                 tr("Close all except current");
-    const QString docFilePath =
-            doc ? doc->filePath() : QString();
+    const QString docFilePath = docPtr ? docPtr->filePath() : QString();
     m_ui->actionCloseDoc->setText(textActionClose);
     m_ui->actionCloseAllExcept->setText(textActionCloseAllExcept);
     m_ui->widget_FileSystem->setLocation(docFilePath);
@@ -837,7 +833,7 @@ void MainWindow::closeCurrentDocument()
     this->closeDocument(this->currentDocumentIndex());
 }
 
-void MainWindow::closeDocument(WidgetGuiDocument *widget)
+void MainWindow::closeDocument(WidgetGuiDocument* widget)
 {
     if (widget) {
         Document* doc = widget->guiDocument()->document();
@@ -878,13 +874,13 @@ void MainWindow::openDocumentsFromList(const QStringList& listFilePath)
     auto app = Application::instance();
     for (const QString& filePath : listFilePath) {
         const QFileInfo loc(filePath);
-        const int docId = app->findDocumentByLocation(loc);
-        if (docId == -1) {
+        const DocumentPtr docPtr = app->findDocumentByLocation(loc);
+        if (docPtr.IsNull()) {
             const QString locAbsoluteFilePath = QDir::toNativeSeparators(loc.absoluteFilePath());
             const Application::PartFormat fileFormat = Application::findPartFormat(locAbsoluteFilePath);
             if (fileFormat != Application::PartFormat::Unknown) {
                 auto doc = new Document;
-                doc->setLabel(loc.fileName());
+                doc->setName(loc.fileName());
                 doc->setFilePath(locAbsoluteFilePath);
                 app->addDocument(doc);
                 this->runImportTask(doc, fileFormat, locAbsoluteFilePath);
@@ -931,11 +927,11 @@ void MainWindow::updateControlsActivation()
     Span<const ApplicationItem> spanSelectedAppItem =
             GuiApplication::instance()->selectionModel()->selectedItems();
     const ApplicationItem firstAppItem =
-            !spanSelectedAppItem.empty() ?
-                spanSelectedAppItem.at(0) : ApplicationItem();
+            !spanSelectedAppItem.empty() ? spanSelectedAppItem.at(0) : ApplicationItem();
     m_ui->actionInspectXDE->setEnabled(
                 spanSelectedAppItem.size() == 1
-                && sameType<XdeDocumentItem>(firstAppItem.documentItem()));
+                && firstAppItem.isValid()
+                && firstAppItem.document()->isXCafDocument());
 }
 
 int MainWindow::currentDocumentIndex() const

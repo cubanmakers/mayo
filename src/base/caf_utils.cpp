@@ -35,6 +35,12 @@ QString CafUtils::labelAttrStdName(const TDF_Label& label)
     return QString();
 }
 
+bool CafUtils::hasAttribute(const TDF_Label& label, const Standard_GUID& attrGuid)
+{
+    Handle_TDF_Attribute attr;
+    return label.FindAttribute(attrGuid, attr);
+}
+
 Handle_TDocStd_Document CafUtils::createXdeDocument(const char *format)
 {
     Handle_TDocStd_Document doc;

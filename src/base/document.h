@@ -6,7 +6,6 @@
 
 #pragma once
 
-
 #include "libtree.h"
 #include "quantity.h"
 #include <QtCore/QObject>
@@ -108,13 +107,16 @@ public:
     XCaf& xcaf() { return m_xcaf; }
     const XCaf& xcaf() const { return m_xcaf; }
 
+    static DocumentPtr findFrom(const TDF_Label& label);
+
 public: // -- from TDocStd_Document
     void BeforeClose() override;
     void ChangeStorageFormat(const TCollection_ExtendedString& newStorageFormat) override;
 
-    DEFINE_STANDARD_RTTIEXT(Document, TDocStd_Document)
+    DEFINE_STANDARD_RTTI_INLINE(Document, TDocStd_Document)
 
 signals:
+    void entityAdded(const TDF_Label& labelEntity);
 //    void itemAdded(DocumentItem* docItem);
 //    void itemErased(const DocumentItem* docItem);
 //    void itemPropertyChanged(DocumentItem* docItem, Property* prop);
@@ -137,18 +139,15 @@ private:
 
 struct DocumentTreeNode {
     DocumentTreeNode() = default;
-    DocumentTreeNode(const DocumentPtr& docPtr, TreeNodeId nodeId)
-        : document(docPtr), id(nodeId)
-    { }
+    DocumentTreeNode(const DocumentPtr& docPtr, TreeNodeId nodeId);
 
-    bool isValid() const { return !this->document.IsNull() && this->id != 0; }
-    static const DocumentTreeNode& null() {
-        static const DocumentTreeNode node = {};
-        return node;
-    }
+    bool isValid() const;
+    static const DocumentTreeNode& null();
+
+    TDF_Label label() const;
 
     DocumentPtr document;
-    TreeNodeId id;
+    TreeNodeId id = 0;
 };
 
 } // namespace Mayo

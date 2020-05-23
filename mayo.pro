@@ -44,8 +44,11 @@ HEADERS += \
     \
     $$files(src/base/*.h) \
     $$files(src/gpx/*.h) \
+    $$files(src/graphics/*.h) \
     $$files(src/gui/*.h) \
-    $$files(src/app/*.h) \
+    $$files(src/app/*.h) \ \
+    src/base/io.h \
+    src/base/tkernel_utils.h \
 
 SOURCES += \
     src/3rdparty/fougtools/occtools/qt_utils.cpp \
@@ -56,8 +59,10 @@ SOURCES += \
     \
     $$files(src/base/*.cpp) \
     $$files(src/gpx/*.cpp) \
+    $$files(src/graphics/*.cpp) \
     $$files(src/gui/*.cpp) \
-    $$files(src/app/*.cpp) \
+    $$files(src/app/*.cpp) \ \
+    src/base/io.cpp
 
 win* {
     QT += winextras

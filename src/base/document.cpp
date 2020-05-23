@@ -85,6 +85,11 @@ bool Document::isXCafDocument() const
     return XCAFDoc_DocumentTool::IsXCAFDocument(this);
 }
 
+DocumentPtr Document::findFrom(const TDF_Label& label)
+{
+    return DocumentPtr::DownCast(TDocStd_Document::Get(label));
+}
+
 void Document::BeforeClose()
 {
     TDocStd_Document::BeforeClose();
@@ -266,8 +271,7 @@ TopLoc_Location XCaf::shapeAbsoluteLocation(TreeNodeId nodeId) const
     return absoluteLoc;
 }
 
-XCaf::ValidationProperties XCaf::validationProperties(
-        const TDF_Label& lbl)
+XCaf::ValidationProperties XCaf::validationProperties(const TDF_Label& lbl)
 {
     ValidationProperties props = {};
     for (TDF_AttributeIterator it(lbl); it.More(); it.Next()) {
@@ -294,6 +298,46 @@ XCaf::ValidationProperties XCaf::validationProperties(
     }
 
     return props;
+}
+
+void XCaf::deepBuildAssemblyTree(TreeNodeId parentNode, const TDF_Label& label)
+{
+    const TreeNodeId node = m_asmTree.appendChild(parentNode, label);
+    if (XCaf::isShapeAssembly(label)) {
+        for (const TDF_Label& child : XCaf::shapeComponents(label))
+            this->deepBuildAssemblyTree(node, child);
+    }
+    else if (XCaf::isShapeSimple(label)) {
+        for (const TDF_Label& child : XCaf::shapeSubs(label))
+            this->deepBuildAssemblyTree(node, child);
+    }
+    else if (XCaf::isShapeReference(label)) {
+        const TDF_Label referred = XCaf::shapeReferred(label);
+        this->deepBuildAssemblyTree(node, referred);
+    }
+}
+
+DocumentTreeNode::DocumentTreeNode(const DocumentPtr& docPtr, TreeNodeId nodeId)
+    : document(docPtr), id(nodeId)
+{ }
+
+bool DocumentTreeNode::isValid() const
+{
+    return !this->document.IsNull() && this->id != 0;
+}
+
+const DocumentTreeNode& DocumentTreeNode::null()
+{
+    static const DocumentTreeNode node = {};
+    return node;
+}
+
+TDF_Label DocumentTreeNode::label() const
+{
+    if (this->isValid())
+        return this->document->xcaf().assemblyTree().nodeData(this->id);
+    else
+        return TDF_Label();
 }
 
 } // namespace Mayo
