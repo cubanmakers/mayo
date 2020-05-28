@@ -7,6 +7,7 @@
 #pragma once
 
 #include "document.h"
+#include "document_tree_node.h"
 
 namespace Mayo {
 

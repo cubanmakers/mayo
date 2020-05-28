@@ -47,10 +47,9 @@ signals:
     void gpxBoundingBoxChanged(const Bnd_Box& bndBox);
 
 private:
-//    void onItemAdded(DocumentItem* item);
+    void onDocumentEntityAdded(TreeNodeId entityTreeNodeId);
 //    void onItemErased(const DocumentItem* item);
 
-//    void mapGpxItem(DocumentItem* item);
     void mapGraphics(const TDF_Label& label);
 
     using ArrayGraphicsEntityOwner = std::vector<Handle_SelectMgr_EntityOwner>;

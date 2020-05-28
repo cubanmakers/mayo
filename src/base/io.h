@@ -6,7 +6,6 @@
 
 #pragma once
 
-
 #include "application_item.h"
 #include "result.h"
 #include "span.h"
@@ -55,7 +54,7 @@ public:
         OpenCascade
     };
 
-    IO& instance();
+    static IO* instance();
 
     static Span<const PartFormat> partFormats();
     static QString partFormatFilter(PartFormat format);
@@ -65,12 +64,12 @@ public:
     StlIoLibrary stlIoLibrary() const;
     void setStlIoLibrary(StlIoLibrary lib);
 
-    Result importInDocument(
+    IO::Result importInDocument(
             DocumentPtr doc,
             PartFormat format,
             const QString& filepath,
             qttask::Progress* progress = nullptr);
-    Result exportApplicationItems(
+    IO::Result exportApplicationItems(
             Span<const ApplicationItem> appItems,
             PartFormat format,
             const ExportOptions& options,

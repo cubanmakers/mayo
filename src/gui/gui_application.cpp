@@ -58,11 +58,6 @@ GuiDocument* GuiApplication::findGuiDocument(const DocumentPtr& doc) const
     return nullptr;
 }
 
-Span<GuiDocument*> GuiApplication::guiDocuments() const
-{
-    return m_vecGuiDocument;
-}
-
 ApplicationItemSelectionModel* GuiApplication::selectionModel() const
 {
     return m_selectionModel;

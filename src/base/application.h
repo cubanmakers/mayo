@@ -7,6 +7,7 @@
 #pragma once
 
 #include "document.h"
+#include <CDF_DirectoryIterator.hxx>
 #include <TDocStd_Application.hxx>
 #include <QtCore/QFileInfo>
 #include <atomic>
@@ -24,12 +25,28 @@ class Application : public QObject, public TDocStd_Application {
 public:
     static ApplicationPtr instance();
 
+    struct DocumentIterator : private CDF_DirectoryIterator {
+        DocumentIterator(const ApplicationPtr& app);
+        DocumentIterator(const Application* app);
+        bool hasNext() const;
+        void next();
+        DocumentPtr current() const;
+        int currentIndex() const { return m_currentIndex; }
+    private:
+        int m_currentIndex = 0;
+    };
+
     int documentCount() const;
     DocumentPtr newDocument(Document::Format docFormat = Document::Format::Binary);
     DocumentPtr openDocument(const QString& filePath, PCDM_ReaderStatus* ptrReadStatus = nullptr);
     DocumentPtr findDocumentByIndex(int docIndex) const;
     DocumentPtr findDocumentByIdentifier(Document::Identifier docIdent) const;
     DocumentPtr findDocumentByLocation(const QFileInfo& loc) const;
+    int findIndexOfDocument(const DocumentPtr& doc) const;
+
+    void closeDocument(const DocumentPtr& doc);
+
+    static void setOpenCascadeEnvironment(const QString& settingsFilepath);
 
 public: //  from TDocStd_Application
     void NewDocument(
@@ -48,6 +65,8 @@ public: //  from TDocStd_Application
 signals:
     void documentAdded(const DocumentPtr& doc);
     void documentAboutToClose(const DocumentPtr& doc);
+    void documentEntityAdded(const DocumentPtr& doc, TreeNodeId entityId);
+    void documentEntityAboutToBeDestroyed(const DocumentPtr& doc, TreeNodeId entityId);
 
 private: // Implementation
     friend class Document;

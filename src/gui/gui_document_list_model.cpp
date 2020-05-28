@@ -39,7 +39,7 @@ void GuiDocumentListModel::appendGuiDocument(const GuiDocument* guiDoc)
     const int rowId = this->rowCount();
     this->insertRow(rowId);
     const QModelIndex indexRow = this->index(rowId);
-    this->setData(indexRow, guiDoc->document()->label());
+    this->setData(indexRow, guiDoc->document()->name());
     m_vecGuiDocument.emplace_back(guiDoc);
 }
 

@@ -23,10 +23,12 @@ public:
     TreeNodeId nodeChildLast(TreeNodeId id) const;
     TreeNodeId nodeParent(TreeNodeId id) const;
     const T& nodeData(TreeNodeId id) const;
+    bool nodeIsRoot(TreeNodeId id) const;
     Span<const TreeNodeId> roots() const;
 
     void clear();
     TreeNodeId appendChild(TreeNodeId parentId, const T& data);
+    void remove(TreeNodeId id);
 
 private:
     struct TreeNode {
@@ -91,8 +93,13 @@ template<typename T> const T& Tree<T>::nodeData(TreeNodeId id) const {
     return node ? node->data : nullObject;
 }
 
-template<typename T>
-void Tree<T>::clear()
+template<typename T> bool Tree<T>::nodeIsRoot(TreeNodeId id) const
+{
+    const TreeNode* node = this->ptrNode(id);
+    return node ? node->parent == 0 : false;
+}
+
+template<typename T> void Tree<T>::clear()
 {
     m_vecNode.clear();
     m_vecRoot.clear();
@@ -122,6 +129,11 @@ TreeNodeId Tree<T>::appendChild(TreeNodeId parentId, const T& data)
     }
 
     return nodeId;
+}
+
+template<typename T> void Tree<T>::remove(TreeNodeId id)
+{
+    Expects(false && "not implemented yet");
 }
 
 template<typename T>

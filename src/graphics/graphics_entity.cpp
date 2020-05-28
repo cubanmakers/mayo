@@ -36,8 +36,12 @@ AIS_InteractiveContext* GraphicsEntity::aisContextPtr() const
 
 void GraphicsEntity::setAisContext(const Handle_AIS_InteractiveContext& context)
 {
-    Expects(!this->aisContextNotNull());
+    Expects(this->aisObjectNotNull());
+    Expects(!m_aisObject->HasInteractiveContext());
+
     m_aisObject->SetContext(context);
+
+    Ensures(this->aisContextNotNull());
 }
 
 bool GraphicsEntity::isVisible() const

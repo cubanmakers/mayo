@@ -10,8 +10,6 @@
 #include "../base/application.h"
 #include "../base/application_item_selection_model.h"
 #include "../base/document.h"
-#include "../base/document_item.h"
-#include "../base/xde_document_item.h"
 #include "../gpx/gpx_utils.h"
 #include "../gui/gui_application.h"
 #include "../gui/gui_document.h"
@@ -56,14 +54,14 @@ namespace Mayo {
 
 namespace Internal {
 
-static Application::PartFormat partFormatFromFilter(const QString& filter)
+static IO::PartFormat partFormatFromFilter(const QString& filter)
 {
-    for (Application::PartFormat format : Application::partFormats()) {
-        if (filter == Application::partFormatFilter(format))
+    for (IO::PartFormat format : IO::partFormats()) {
+        if (filter == IO::partFormatFilter(format))
             return format;
     }
 
-    return Application::PartFormat::Unknown;
+    return IO::PartFormat::Unknown;
 }
 
 // TODO: move in Options
@@ -89,7 +87,7 @@ struct ImportExportSettings {
 struct OpenFileNames {
     QStringList listFilepath;
     ImportExportSettings lastIoSettings;
-    Application::PartFormat selectedFormat;
+    IO::PartFormat selectedFormat;
 
     enum GetOption {
         GetOne,
@@ -101,9 +99,9 @@ struct OpenFileNames {
             OpenFileNames::GetOption option = OpenFileNames::GetMany)
     {
         OpenFileNames result;
-        result.selectedFormat = Application::PartFormat::Unknown;
+        result.selectedFormat = IO::PartFormat::Unknown;
         result.lastIoSettings = ImportExportSettings::load();
-        QStringList listPartFormatFilter = Application::partFormatFilters();
+        QStringList listPartFormatFilter = IO::partFormatFilters();
         const QString allFilesFilter = Application::tr("All files(*.*)");
         listPartFormatFilter.append(allFilesFilter);
         const QString dlgTitle = Application::tr("Select Part File");
@@ -129,7 +127,7 @@ struct OpenFileNames {
             result.selectedFormat =
                     result.lastIoSettings.selectedFilter != allFilesFilter ?
                         partFormatFromFilter(result.lastIoSettings.selectedFilter) :
-                        Application::PartFormat::Unknown;
+                        IO::PartFormat::Unknown;
             ImportExportSettings::save(result.lastIoSettings);
         }
 
@@ -458,15 +456,15 @@ void MainWindow::importInCurrentDoc()
 {
     auto widgetGuiDoc = this->currentWidgetGuiDocument();
     if (widgetGuiDoc) {
-        Document* doc = widgetGuiDoc->guiDocument()->document();
+        const DocumentPtr& doc = widgetGuiDoc->guiDocument()->document();
         const auto resFileNames = Internal::OpenFileNames::get(this);
         if (!resFileNames.listFilepath.isEmpty()) {
-            const Application::PartFormat userFormat = resFileNames.selectedFormat;
-            const bool hasUserFormat = userFormat != Application::PartFormat::Unknown;
+            const IO::PartFormat userFormat = resFileNames.selectedFormat;
+            const bool hasUserFormat = userFormat != IO::PartFormat::Unknown;
             for (const QString& filepath : resFileNames.listFilepath) {
-                const Application::PartFormat fileFormat =
-                        hasUserFormat ? userFormat : Application::findPartFormat(filepath);
-                if (fileFormat != Application::PartFormat::Unknown) {
+                const IO::PartFormat fileFormat =
+                        hasUserFormat ? userFormat : IO::findPartFormat(filepath);
+                if (fileFormat != IO::PartFormat::Unknown) {
                     this->runImportTask(doc, fileFormat, filepath);
                     Internal::prependRecentFile(&m_listRecentFile, filepath);
                 }
@@ -478,17 +476,15 @@ void MainWindow::importInCurrentDoc()
     }
 }
 
-void MainWindow::runImportTask(
-        Document* doc, Application::PartFormat format, const QString& filepath)
+void MainWindow::runImportTask(DocumentPtr doc, IO::PartFormat format, const QString& filepath)
 {
     auto task = qttask::Manager::globalInstance()->newTask<qttask::StdAsync>();
     task->setTaskTitle(QFileInfo(filepath).fileName());
     task->run([=]{
         QTime chrono;
         chrono.start();
-        const Application::IoResult result =
-                Application::instance()->importInDocument(
-                    doc, format, filepath, &task->progress());
+        const IO::Result result =
+                IO::instance()->importInDocument(doc, format, filepath, &task->progress());
         QString msg;
         if (result) {
             msg = tr("Import time '%1': %2ms")
@@ -505,8 +501,8 @@ void MainWindow::runImportTask(
 
 void MainWindow::runExportTask(
         Span<const ApplicationItem> appItems,
-        Application::PartFormat format,
-        const Application::ExportOptions& opts,
+        IO::PartFormat format,
+        const IO::ExportOptions& opts,
         const QString& filepath)
 {
     auto task = qttask::Manager::globalInstance()->newTask<qttask::StdAsync>();
@@ -514,9 +510,8 @@ void MainWindow::runExportTask(
     task->run([=]{
         QTime chrono;
         chrono.start();
-        const Application::IoResult result =
-                Application::instance()->exportApplicationItems(
-                    appItems, format, opts, filepath, &task->progress());
+        const IO::Result result =
+                IO::instance()->exportApplicationItems(appItems, format, opts, filepath, &task->progress());
         QString msg;
         if (result) {
             msg = tr("Export time '%1': %2ms")
@@ -533,27 +528,26 @@ void MainWindow::runExportTask(
 
 void MainWindow::exportSelectedItems()
 {
-    static const Application::ExportOptions defaultOpts;
+    static const IO::ExportOptions defaultOpts;
     auto lastSettings = Internal::ImportExportSettings::load();
     const QString filepath =
             QFileDialog::getSaveFileName(
                 this,
                 tr("Select Output File"),
                 lastSettings.openDir,
-                Application::partFormatFilters().join(QLatin1String(";;")),
+                IO::partFormatFilters().join(QLatin1String(";;")),
                 &lastSettings.selectedFilter);
     if (!filepath.isEmpty()) {
         lastSettings.openDir = QFileInfo(filepath).canonicalPath();
-        const Application::PartFormat format =
-                Internal::partFormatFromFilter(lastSettings.selectedFilter);
+        const IO::PartFormat format = Internal::partFormatFromFilter(lastSettings.selectedFilter);
         Span<const ApplicationItem> spanAppItem =
                 GuiApplication::instance()->selectionModel()->selectedItems();
-        if (Application::hasExportOptionsForFormat(format)) {
+        if (IO::hasExportOptionsForFormat(format)) {
 #ifdef HAVE_GMIO
             auto dlg = new DialogExportOptions(this);
             dlg->setPartFormat(format);
             QObject::connect(dlg, &QDialog::accepted, [=]{
-                const Application::ExportOptions opts = dlg->currentExportOptions();
+                const IO::ExportOptions opts = dlg->currentExportOptions();
                 this->runExportTask(vecDocItem, format, opts, filepath);
                 Internal::ImportExportSettings::save(lastSettings);
             });
@@ -659,6 +653,7 @@ void MainWindow::reportbug()
 
 void MainWindow::onApplicationItemSelectionChanged()
 {
+#if 0
     WidgetModelTree* uiModelTree = m_ui->widget_ModelTree;
     WidgetPropertiesEditor* uiProps = m_ui->widget_Properties;
 
@@ -701,6 +696,7 @@ void MainWindow::onApplicationItemSelectionChanged()
         // TODO
         uiProps->clear();
     }
+#endif
 
     this->updateControlsActivation();
 }
@@ -836,10 +832,10 @@ void MainWindow::closeCurrentDocument()
 void MainWindow::closeDocument(WidgetGuiDocument* widget)
 {
     if (widget) {
-        Document* doc = widget->guiDocument()->document();
+        const DocumentPtr& doc = widget->guiDocument()->document();
         m_ui->stack_GuiDocuments->removeWidget(widget);
         widget->deleteLater();
-        Application::instance()->eraseDocument(doc);
+        Application::instance()->closeDocument(doc);
         this->updateControlsActivation();
     }
 }
@@ -877,12 +873,11 @@ void MainWindow::openDocumentsFromList(const QStringList& listFilePath)
         const DocumentPtr docPtr = app->findDocumentByLocation(loc);
         if (docPtr.IsNull()) {
             const QString locAbsoluteFilePath = QDir::toNativeSeparators(loc.absoluteFilePath());
-            const Application::PartFormat fileFormat = Application::findPartFormat(locAbsoluteFilePath);
-            if (fileFormat != Application::PartFormat::Unknown) {
-                auto doc = new Document;
+            const IO::PartFormat fileFormat = IO::findPartFormat(locAbsoluteFilePath);
+            if (fileFormat != IO::PartFormat::Unknown) {
+                DocumentPtr doc = app->newDocument();
                 doc->setName(loc.fileName());
                 doc->setFilePath(locAbsoluteFilePath);
-                app->addDocument(doc);
                 this->runImportTask(doc, fileFormat, locAbsoluteFilePath);
                 Internal::prependRecentFile(&m_listRecentFile, locAbsoluteFilePath);
             }
@@ -892,7 +887,7 @@ void MainWindow::openDocumentsFromList(const QStringList& listFilePath)
         }
         else {
             if (listFilePath.size() == 1)
-                this->setCurrentDocumentIndex(docId);
+                this->setCurrentDocumentIndex(app->findIndexOfDocument(docPtr));
         }
     }
 }

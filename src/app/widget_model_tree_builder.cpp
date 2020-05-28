@@ -7,7 +7,7 @@
 #include "widget_model_tree_builder.h"
 
 #include "../base/document.h"
-#include "../base/document_item.h"
+#include "../base/caf_utils.h"
 #include "widget_model_tree.h"
 #include "theme.h"
 
@@ -20,33 +20,26 @@ WidgetModelTreeBuilder::~WidgetModelTreeBuilder()
 {
 }
 
-void WidgetModelTreeBuilder::refreshTextTreeItem(
-        const Document* doc, QTreeWidgetItem* treeItem)
+void WidgetModelTreeBuilder::refreshTextTreeItem(const DocumentPtr& doc, QTreeWidgetItem* treeItem)
 {
-    treeItem->setText(0, WidgetModelTreeBuilder::labelText(doc->propertyLabel));
+    treeItem->setText(0, WidgetModelTreeBuilder::labelText(doc->name()));
 }
 
-void WidgetModelTreeBuilder::refreshTextTreeItem(
-        const DocumentItem* docItem, QTreeWidgetItem* treeItem)
+void WidgetModelTreeBuilder::refreshTextTreeItem(const DocumentTreeNode& node, QTreeWidgetItem* treeItem)
 {
-    treeItem->setText(0, WidgetModelTreeBuilder::labelText(docItem->propertyLabel));
+    treeItem->setText(0, WidgetModelTreeBuilder::labelText(node.label()));
 }
 
-void WidgetModelTreeBuilder::refreshTextTreeItem(
-        const DocumentItemNode&, QTreeWidgetItem*)
+void WidgetModelTreeBuilder::fillTreeItem(QTreeWidgetItem* treeItem, const DocumentPtr& doc)
 {
-}
-
-void WidgetModelTreeBuilder::fillTreeItem(QTreeWidgetItem* treeItem, Document* doc)
-{
-    treeItem->setText(0, WidgetModelTreeBuilder::labelText(doc->propertyLabel));
+    treeItem->setText(0, WidgetModelTreeBuilder::labelText(doc->name()));
     treeItem->setIcon(0, mayoTheme()->icon(Theme::Icon::File));
     treeItem->setToolTip(0, doc->filePath());
 }
 
-void WidgetModelTreeBuilder::fillTreeItem(QTreeWidgetItem* treeItem, DocumentItem* docItem)
+void WidgetModelTreeBuilder::fillTreeItem(QTreeWidgetItem* treeItem, const DocumentTreeNode& node)
 {
-    treeItem->setText(0, WidgetModelTreeBuilder::labelText(docItem->propertyLabel));
+    treeItem->setText(0, WidgetModelTreeBuilder::labelText(node.label()));
 }
 
 void WidgetModelTreeBuilder::loadConfiguration(const Settings*, const QString&)
@@ -59,8 +52,7 @@ void WidgetModelTreeBuilder::saveConfiguration(Settings*, const QString&)
 
 std::vector<QAction*> WidgetModelTreeBuilder::createConfigurationActions(QObject*)
 {
-    std::vector<QAction*> vecAction;
-    return vecAction;
+    return {};
 }
 
 WidgetModelTreeBuilder* WidgetModelTreeBuilder::clone() const
@@ -70,8 +62,17 @@ WidgetModelTreeBuilder* WidgetModelTreeBuilder::clone() const
 
 QString WidgetModelTreeBuilder::labelText(const PropertyQString& propLabel)
 {
-    const QString label = propLabel.value();
+    return WidgetModelTreeBuilder::labelText(propLabel.value());
+}
+
+QString WidgetModelTreeBuilder::labelText(const QString& label)
+{
     return !label.isEmpty() ? label : WidgetModelTree::tr("<unnamed>");
+}
+
+QString WidgetModelTreeBuilder::labelText(const TDF_Label& label)
+{
+    return WidgetModelTreeBuilder::labelText(CafUtils::labelAttrStdName(label));
 }
 
 } // namespace Mayo

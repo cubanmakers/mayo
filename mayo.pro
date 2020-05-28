@@ -1,3 +1,9 @@
+#****************************************************************************
+#* Copyright (c) 2020, Fougue Ltd. <http://www.fougue.pro>
+#* All rights reserved.
+#* See license at https://github.com/fougue/mayo/blob/master/LICENSE.txt
+#****************************************************************************
+
 TARGET = mayo
 TEMPLATE = app
 
@@ -46,9 +52,7 @@ HEADERS += \
     $$files(src/gpx/*.h) \
     $$files(src/graphics/*.h) \
     $$files(src/gui/*.h) \
-    $$files(src/app/*.h) \ \
-    src/base/io.h \
-    src/base/tkernel_utils.h \
+    $$files(src/app/*.h) \
 
 SOURCES += \
     src/3rdparty/fougtools/occtools/qt_utils.cpp \
@@ -61,8 +65,7 @@ SOURCES += \
     $$files(src/gpx/*.cpp) \
     $$files(src/graphics/*.cpp) \
     $$files(src/gui/*.cpp) \
-    $$files(src/app/*.cpp) \ \
-    src/base/io.cpp
+    $$files(src/app/*.cpp) \
 
 win* {
     QT += winextras
@@ -116,3 +119,4 @@ LIBS += -lTKMeshVS -lTKXSDRAW
 LIBS += -lTKLCAF -lTKXCAF -lTKCAF
 LIBS += -lTKG3d
 LIBS += -lTKGeomBase
+LIBS += -lTKCDF -lTKBin -lTKBinL -lTKBinXCAF -lTKXml -lTKXmlL -lTKXmlXCAF

@@ -6,6 +6,8 @@
 
 #include "io.h"
 
+#include "caf_utils.h"
+#include "document.h"
 #include "string_utils.h"
 #include <fougtools/qttools/task/progress.h>
 
@@ -55,6 +57,7 @@
 #include <locale>
 #include <fstream>
 #include <mutex>
+#include <set>
 
 namespace Mayo {
 
@@ -220,7 +223,7 @@ template<> struct CafReaderTraits<STEPCAFControl_Reader> {
 template<typename CAF_READER> // Either IGESCAFControl_Reader or STEPCAFControl_Reader
 void loadCafDocumentFromFile(
         const QString& filepath,
-        Handle_TDocStd_Document& doc,
+        Handle_TDocStd_Document doc,
         IFSelect_ReturnStatus* error,
         qttask::Progress* progress)
 {
@@ -290,23 +293,23 @@ static TopoDS_Shape xdeDocumentWholeShape(const DocumentPtr& doc)
 //    return partItem;
 //}
 
-static XdeDocumentItem* createXdeDocumentItem(
-        const QString& filepath, const Handle_TDocStd_Document& cafDoc)
-{
-    auto xdeDocItem = new XdeDocumentItem(cafDoc);
-    xdeDocItem->propertyLabel.setValue(QFileInfo(filepath).baseName());
+//static XdeDocumentItem* createXdeDocumentItem(
+//        const QString& filepath, const Handle_TDocStd_Document& cafDoc)
+//{
+//    auto xdeDocItem = new XdeDocumentItem(cafDoc);
+//    xdeDocItem->propertyLabel.setValue(QFileInfo(filepath).baseName());
 
-    const TopoDS_Shape shape = xdeDocumentWholeShape(xdeDocItem);
-    GProp_GProps system;
-    BRepGProp::VolumeProperties(shape, system);
-    xdeDocItem->propertyVolume.setQuantity(
-                std::max(system.Mass(), 0.) * Quantity_CubicMillimeter);
-    BRepGProp::SurfaceProperties(shape, system);
-    xdeDocItem->propertyArea.setQuantity(
-                std::max(system.Mass(), 0.) * Quantity_SquaredMillimeter);
+//    const TopoDS_Shape shape = xdeDocumentWholeShape(xdeDocItem);
+//    GProp_GProps system;
+//    BRepGProp::VolumeProperties(shape, system);
+//    xdeDocItem->propertyVolume.setQuantity(
+//                std::max(system.Mass(), 0.) * Quantity_CubicMillimeter);
+//    BRepGProp::SurfaceProperties(shape, system);
+//    xdeDocItem->propertyArea.setQuantity(
+//                std::max(system.Mass(), 0.) * Quantity_SquaredMillimeter);
 
-    return xdeDocItem;
-}
+//    return xdeDocItem;
+//}
 
 static IO::PartFormat findPartFormatFromContents(
         std::string_view contentsBegin,
@@ -390,10 +393,10 @@ static IO::PartFormat findPartFormatFromContents(
 
 } // namespace Internal
 
-IO& IO::instance()
+IO* IO::instance()
 {
     static IO io;
-    return io;
+    return &io;
 }
 
 Span<const IO::PartFormat> IO::partFormats()
@@ -462,7 +465,11 @@ void IO::setStlIoLibrary(IO::StlIoLibrary lib)
     m_stlIoLibrary = lib;
 }
 
-IO::Result IO::importInDocument(DocumentPtr doc, IO::PartFormat format, const QString& filepath, qttask::Progress* progress)
+IO::Result IO::importInDocument(
+        DocumentPtr doc,
+        IO::PartFormat format,
+        const QString& filepath,
+        qttask::Progress* progress)
 {
     const ImportData data = { doc, filepath, progress };
     switch (format) {
@@ -504,36 +511,28 @@ IO::Result IO::importIges(ImportData data)
 {
     IGESControl_Controller::Init();
     IFSelect_ReturnStatus err;
-    Internal::loadCafDocumentFromFile<IGESCAFControl_Reader>(
-                data.filepath, data.doc, &err, data.progress);
-    if (err == IFSelect_RetDone) {
-        for (const TDF_Label& label : data.doc->xcaf().topLevelFreeShapes()) {
-            emit data.doc->entityAdded(label);
-        }
-
+    data.doc->xcafImport([&]{
+        Internal::loadCafDocumentFromFile<IGESCAFControl_Reader>(data.filepath, data.doc, &err, data.progress);
+        return err == IFSelect_RetDone;
+    });
+    if (err == IFSelect_RetDone)
         return Result::ok();
-    }
-    else {
+    else
         return Result::error(StringUtils::rawText(err));
-    }
 }
 
 IO::Result IO::importStep(ImportData data)
 {
     Interface_Static::SetIVal("read.stepcaf.subshapes.name", 1);
     IFSelect_ReturnStatus err;
-    Internal::loadCafDocumentFromFile<STEPCAFControl_Reader>(
-                data.filepath, data.doc, &err, data.progress);
-    if (err == IFSelect_RetDone) {
-        for (const TDF_Label& label : data.doc->xcaf().topLevelFreeShapes()) {
-            emit data.doc->entityAdded(label);
-        }
-
+    data.doc->xcafImport([&]{
+        Internal::loadCafDocumentFromFile<STEPCAFControl_Reader>(data.filepath, data.doc, &err, data.progress);
+        return err == IFSelect_RetDone;
+    });
+    if (err == IFSelect_RetDone)
         return Result::ok();
-    }
-    else {
+    else
         return Result::error(StringUtils::rawText(err));
-    }
 }
 
 IO::Result IO::importOccBRep(ImportData data)
@@ -545,10 +544,12 @@ IO::Result IO::importOccBRep(ImportData data)
     if (!ok)
         return Result::error(tr("Unknown Error"));
 
-    const Handle_XCAFDoc_ShapeTool& shapeTool = data.doc->xcaf().shapeTool();
-    const TDF_Label labelShape = shapeTool->NewShape();
-    shapeTool->SetShape(labelShape, shape);
-    emit data.doc->entityAdded(labelShape);
+    data.doc->xcafImport([&]{
+        const Handle_XCAFDoc_ShapeTool shapeTool = data.doc->xcaf().shapeTool();
+        const TDF_Label labelShape = shapeTool->NewShape();
+        shapeTool->SetShape(labelShape, shape);
+        return true;
+    });
     return Result::ok();
 }
 
@@ -581,9 +582,10 @@ IO::Result IO::importStl(ImportData data)
         const Handle_Poly_Triangulation mesh = RWStl::ReadFile(
                     OSD_Path(data.filepath.toLocal8Bit().constData()), indicator);
         if (!mesh.IsNull()) {
-            TDF_Label labelMesh = data.doc->Main().NewChild();
-            TDataXtd_Triangulation::Set(labelMesh, mesh);
-            emit data.doc->entityAdded(labelMesh);
+            data.doc->singleImport([&](TDF_Label labelNewEntity) {
+                TDataXtd_Triangulation::Set(labelNewEntity, mesh);
+                return true;
+            });
         }
         else {
             return Result::error(tr("Imported STL mesh is null"));
@@ -679,11 +681,11 @@ IO::Result IO::exportOccBRep(ExportData data)
 IO::Result IO::exportStl(ExportData data)
 {
     if (this->stlIoLibrary() == StlIoLibrary::Gmio)
-        return this->exportStl_gmio(appItems, options, filepath, progress);
+        return this->exportStl_gmio(data);
     else if (this->stlIoLibrary() == StlIoLibrary::OpenCascade)
-        return this->exportStl_OCC(appItems, options, filepath, progress);
+        return this->exportStl_OCC(data);
 
-    return IoResult::error(tr("Unknown Error"));
+    return Result::error(tr("Unknown Error"));
 }
 
 IO::Result IO::exportStl_gmio(ExportData data)
@@ -754,6 +756,19 @@ IO::Result IO::exportStl_OCC(ExportData data)
             return Result::ok();
     };
 
+    auto fnWriteMesh = [=](const Handle_Poly_Triangulation& mesh) {
+        Handle_Message_ProgressIndicator indicator = new Internal::OccProgress(data.progress);
+        bool ok = false;
+        const QByteArray filepathLocal8b = data.filepath.toLocal8Bit();
+        const OSD_Path osdFilepath(filepathLocal8b.constData());
+        if (isAsciiFormat)
+            ok = RWStl::WriteAscii(mesh, osdFilepath, indicator);
+        else
+            ok = RWStl::WriteBinary(mesh, osdFilepath, indicator);
+
+        return ok ? Result::ok() : Result::error(tr("Unknown error"));
+    };
+
     if (!data.appItems.empty()) {
         const ApplicationItem& item = data.appItems.at(0);
         if (item.isDocument()) {
@@ -761,23 +776,14 @@ IO::Result IO::exportStl_OCC(ExportData data)
         }
         else if (item.isDocumentTreeNode()) {
             const TDF_Label label = item.documentTreeNode().label();
-            return fnWriteShape(XCaf::shape(label));
-        }
-
-        else if (sameType<MeshItem>(item.documentItem())) {
-            Handle_Message_ProgressIndicator indicator = new Internal::OccProgress(progress);
-            bool ok = false;
-            auto meshItem = static_cast<const MeshItem*>(item.documentItem());
-            const QByteArray filepathLocal8b = filepath.toLocal8Bit();
-            const OSD_Path osdFilepath(filepathLocal8b.constData());
-            const Handle_Poly_Triangulation& mesh = meshItem->triangulation();
-            if (isAsciiFormat)
-                ok = RWStl::WriteAscii(mesh, osdFilepath, indicator);
-            else
-                ok = RWStl::WriteBinary(mesh, osdFilepath, indicator);
-
-            if (!ok)
-                return Result::error(tr("Unknown error"));
+            if (XCaf::isShape(label)) {
+                return fnWriteShape(XCaf::shape(label));
+            }
+            else {
+                auto attrPolyTri = CafUtils::findAttribute<TDataXtd_Triangulation>(label);
+                if (!attrPolyTri.IsNull())
+                    return fnWriteMesh(attrPolyTri->Get());
+            }
         }
     }
 

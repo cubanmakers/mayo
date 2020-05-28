@@ -7,7 +7,6 @@
 #pragma once
 
 #include <TDF_Label.hxx>
-#include <TDocStd_Document.hxx>
 #include <QtCore/QString>
 #include <QtCore/QHash>
 
@@ -15,15 +14,17 @@ namespace Mayo {
 
 struct CafUtils {
     static QLatin1String labelTag(const TDF_Label& label);
+
     static QString labelAttrStdName(const TDF_Label& label);
+    static void setLabelAttrStdName(const TDF_Label& label, const QString& name);
+
+    static bool isNullOrEmpty(const TDF_Label& label);
 
     template<typename TDF_ATTRIBUTE>
     static opencascade::handle<TDF_ATTRIBUTE> findAttribute(const TDF_Label& label);
 
     static bool hasAttribute(const TDF_Label& label, const Standard_GUID& attrGuid);
     template<typename TDF_ATTRIBUTE> static bool hasAttribute(const TDF_Label& label);
-
-    static Handle_TDocStd_Document createXdeDocument(const char* format = "XmlXCAF");
 };
 
 } // namespace Mayo

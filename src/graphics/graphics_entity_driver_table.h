@@ -19,13 +19,12 @@ class GraphicsEntityDriverTable {
 public:
     using DriverPtr = std::unique_ptr<GraphicsEntityDriver>;
 
-    static GraphicsEntityDriverTable& instance();
+    static GraphicsEntityDriverTable* instance();
 
     void addDriver(DriverPtr driver);
+    Span<const DriverPtr> drivers() const { return m_vecDriver; }
 
     GraphicsEntity createEntity(const TDF_Label& label) const;
-
-    Span<const DriverPtr> drivers() const { return m_vecDriver; }
 
 private:
     GraphicsEntityDriverTable() = default;

@@ -20,7 +20,8 @@ public:
     static GuiApplication* instance();
     ~GuiApplication();
 
-    Span<GuiDocument*> guiDocuments() const;
+    Span<GuiDocument*> guiDocuments() { return m_vecGuiDocument; }
+    Span<const GuiDocument* const> guiDocuments() const { return m_vecGuiDocument; }
     GuiDocument* findGuiDocument(const DocumentPtr& doc) const;
 
     ApplicationItemSelectionModel* selectionModel() const;

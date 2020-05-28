@@ -109,7 +109,7 @@ GuiDocument::GuiDocument(const DocumentPtr& doc)
         // TODO Iterate over top-level non-shape labels
     }
 
-//    QObject::connect(doc, &Document::itemAdded, this, &GuiDocument::onItemAdded);
+    QObject::connect(doc.get(), &Document::entityAdded, this, &GuiDocument::onDocumentEntityAdded);
 //    QObject::connect(doc, &Document::itemErased, this, &GuiDocument::onItemErased);
 }
 
@@ -146,12 +146,10 @@ void GuiDocument::toggleItemSelected(const ApplicationItem& appItem)
 
     if (appItem.isDocumentTreeNode()) {
         const DocumentPtr doc = appItem.document();
-        //const GuiDocument* guiDoc = this->findGuiDocumentItem(appItem.documentItem());
-        if (!doc.IsNull() && doc->isXCafDocument()) {
-            const DocumentTreeNode& docTreeNode = appItem.documentTreeNode();
-            const TopLoc_Location shapeLoc = doc->xcaf().shapeAbsoluteLocation(docTreeNode.id);
-            const TDF_Label labelNode = doc->xcaf().assemblyTree().nodeData(docTreeNode.id);
-            const TopoDS_Shape shape = XCaf::shape(labelNode).Located(shapeLoc);
+        const DocumentTreeNode& docTreeNode = appItem.documentTreeNode();
+        if (!doc.IsNull() && XCaf::isShape(docTreeNode.label())) {
+            const TopLoc_Location shapeLoc = doc->xcaf().shapeAbsoluteLocation(docTreeNode.id());
+            const TopoDS_Shape shape = XCaf::shape(docTreeNode.label()).Located(shapeLoc);
             std::vector<TopoDS_Face> vecFace;
             if (BRepUtils::moreComplex(shape.ShapeType(), TopAbs_FACE)) {
                 BRepUtils::forEachSubFace(shape, [&](const TopoDS_Face& face) {
@@ -194,6 +192,12 @@ void GuiDocument::updateV3dViewer()
     m_aisContext->UpdateCurrentViewer();
 }
 
+void GuiDocument::onDocumentEntityAdded(TreeNodeId entityTreeNodeId)
+{
+    this->mapGraphics(m_document->modelTree().nodeData(entityTreeNodeId));
+    emit gpxBoundingBoxChanged(m_gpxBoundingBox);
+}
+
 std::vector<Handle_SelectMgr_EntityOwner> GuiDocument::selectedEntityOwners() const
 {
     std::vector<Handle_SelectMgr_EntityOwner> vecOwner;
@@ -205,12 +209,6 @@ std::vector<Handle_SelectMgr_EntityOwner> GuiDocument::selectedEntityOwners() co
 
     return vecOwner;
 }
-
-//void GuiDocument::onItemAdded(DocumentItem* item)
-//{
-//    this->mapGpxItem(item);
-//    emit gpxBoundingBoxChanged(m_gpxBoundingBox);
-//}
 
 //void GuiDocument::onItemErased(const DocumentItem* item)
 //{
@@ -234,32 +232,10 @@ std::vector<Handle_SelectMgr_EntityOwner> GuiDocument::selectedEntityOwners() co
 //    }
 //}
 
-//void GuiDocument::mapGpxItem(DocumentItem* item)
-//{
-//    GpxDocumentItem* gpxItem = GpxDocumentItemFactory::instance()->create(item);
-//    GuiDocumentItem guiItem(item, gpxItem);
-//    gpxItem->setContext(m_aisContext);
-//    gpxItem->setVisible(true);
-//    m_aisContext->UpdateCurrentViewer();
-//    if (sameType<XdeDocumentItem>(item)) {
-//        gpxItem->activateSelection(GpxXdeDocumentItem::SelectVertex);
-//        gpxItem->activateSelection(GpxXdeDocumentItem::SelectEdge);
-//        gpxItem->activateSelection(GpxXdeDocumentItem::SelectWire);
-//        gpxItem->activateSelection(GpxXdeDocumentItem::SelectFace);
-//        gpxItem->activateSelection(GpxXdeDocumentItem::SelectShell);
-//        gpxItem->activateSelection(GpxXdeDocumentItem::SelectSolid);
-//        guiItem.vecGpxEntityOwner = gpxItem->entityOwners(GpxXdeDocumentItem::SelectFace);
-//    }
-
-//    GpxUtils::V3dView_fitAll(m_v3dView);
-//    BndUtils::add(&m_gpxBoundingBox, gpxItem->boundingBox());
-//    m_vecGuiDocumentItem.emplace_back(std::move(guiItem));
-//}
-
 void GuiDocument::mapGraphics(const TDF_Label& label)
 {
     GraphicsItem item;
-    item.graphicsEntity = GraphicsEntityDriverTable::instance().createEntity(label);
+    item.graphicsEntity = GraphicsEntityDriverTable::instance()->createEntity(label);
     item.graphicsEntity.setAisContext(m_aisContext);
     item.graphicsEntity.setVisible(true);
     m_aisContext->UpdateCurrentViewer();

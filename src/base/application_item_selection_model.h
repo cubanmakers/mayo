@@ -8,6 +8,7 @@
 
 #include "application_item.h"
 #include "span.h"
+#include <QtCore/QObject>
 
 namespace Mayo {
 

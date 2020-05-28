@@ -23,7 +23,7 @@ public:
 
     const TDF_Label& label() const { return m_label; }
 
-    bool aisObjectNotNull() const { return m_aisObject.IsNull(); }
+    bool aisObjectNotNull() const { return !m_aisObject.IsNull(); }
     bool aisContextNotNull() const;
 
     const Handle_AIS_InteractiveObject& aisObject() const { return m_aisObject; }

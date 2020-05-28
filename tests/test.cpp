@@ -10,6 +10,7 @@
 #include "test.h"
 #include "../src/base/application.h"
 #include "../src/base/brep_utils.h"
+#include "../src/base/io.h"
 #include "../src/base/libtree.h"
 #include "../src/base/geom_utils.h"
 #include "../src/base/mesh_utils.h"
@@ -32,7 +33,7 @@
 
 Q_DECLARE_METATYPE(Mayo::UnitSystem::TranslateResult)
 // For Application_test()
-Q_DECLARE_METATYPE(Mayo::Application::PartFormat)
+Q_DECLARE_METATYPE(Mayo::IO::PartFormat)
 // For MeshUtils_orientation_test()
 Q_DECLARE_METATYPE(std::vector<gp_Pnt2d>)
 Q_DECLARE_METATYPE(Mayo::MeshUtils::Orientation)
@@ -49,25 +50,25 @@ static bool operator==(
             && std::abs(lhs.factor - rhs.factor) < 1e-6;
 }
 
-void Test::Application_test()
+void Test::IO_test()
 {
     QFETCH(QString, filePath);
-    QFETCH(Application::PartFormat, expectedPartFormat);
+    QFETCH(IO::PartFormat, expectedPartFormat);
 
-    QCOMPARE(Application::findPartFormat(filePath), expectedPartFormat);
+    QCOMPARE(IO::findPartFormat(filePath), expectedPartFormat);
 }
 
-void Test::Application_test_data()
+void Test::IO_test_data()
 {
     QTest::addColumn<QString>("filePath");
-    QTest::addColumn<Application::PartFormat>("expectedPartFormat");
+    QTest::addColumn<IO::PartFormat>("expectedPartFormat");
 
-    QTest::newRow("cube.step") << "inputs/cube.step" << Application::PartFormat::Step;
-    QTest::newRow("cube.iges") << "inputs/cube.iges" << Application::PartFormat::Iges;
-    QTest::newRow("cube.brep") << "inputs/cube.brep" << Application::PartFormat::OccBrep;
-    QTest::newRow("bezier_curve.brep") << "inputs/mayo_bezier_curve.brep" << Application::PartFormat::OccBrep;
-    QTest::newRow("cube.stla") << "inputs/cube.stla" << Application::PartFormat::Stl;
-    QTest::newRow("cube.stlb") << "inputs/cube.stlb" << Application::PartFormat::Stl;
+    QTest::newRow("cube.step") << "inputs/cube.step" << IO::PartFormat::Step;
+    QTest::newRow("cube.iges") << "inputs/cube.iges" << IO::PartFormat::Iges;
+    QTest::newRow("cube.brep") << "inputs/cube.brep" << IO::PartFormat::OccBrep;
+    QTest::newRow("bezier_curve.brep") << "inputs/mayo_bezier_curve.brep" << IO::PartFormat::OccBrep;
+    QTest::newRow("cube.stla") << "inputs/cube.stla" << IO::PartFormat::Stl;
+    QTest::newRow("cube.stlb") << "inputs/cube.stlb" << IO::PartFormat::Stl;
 }
 
 void Test::BRepUtils_test()

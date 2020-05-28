@@ -11,10 +11,16 @@
 
 #include <BinXCAFDrivers_DocumentRetrievalDriver.hxx>
 #include <BinXCAFDrivers_DocumentStorageDriver.hxx>
+#include <CDF_Session.hxx>
 #include <STEPCAFControl_Controller.hxx>
 #include <XCAFApp_Application.hxx>
 #include <XmlXCAFDrivers_DocumentRetrievalDriver.hxx>
 #include <XmlXCAFDrivers_DocumentStorageDriver.hxx>
+
+#include <QtCore/QCoreApplication>
+#include <QtCore/QDir>
+#include <QtCore/QSettings>
+#include <QtCore/QtDebug>
 
 namespace Mayo {
 
@@ -76,7 +82,7 @@ DocumentPtr Application::openDocument(const QString& filePath, PCDM_ReaderStatus
 DocumentPtr Application::findDocumentByIndex(int docIndex) const
 {
     Handle_TDocStd_Document doc;
-    TDocStd_Application::GetDocument(docIndex, doc);
+    TDocStd_Application::GetDocument(docIndex + 1, doc);
     return !doc.IsNull() ? DocumentPtr::DownCast(doc) : DocumentPtr();
 }
 
@@ -96,6 +102,86 @@ DocumentPtr Application::findDocumentByLocation(const QFileInfo& loc) const
     }
 
     return DocumentPtr();
+}
+
+int Application::findIndexOfDocument(const DocumentPtr& doc) const
+{
+    for (DocumentIterator it(this); it.hasNext(); it.next()) {
+        if (it.current() == doc)
+            return it.currentIndex();
+    }
+
+    return -1;
+}
+
+void Application::closeDocument(const DocumentPtr& doc)
+{
+    TDocStd_Application::Close(doc);
+}
+
+void Application::setOpenCascadeEnvironment(const QString& settingsFilepath)
+{
+    const QFileInfo fiSettingsFilepath(settingsFilepath);
+    if (!fiSettingsFilepath.exists() || !fiSettingsFilepath.isReadable()) {
+        qDebug() << settingsFilepath << "doesn't exist or is not readable";
+        return;
+    }
+
+    const QSettings occSettings(settingsFilepath, QSettings::IniFormat);
+    if (occSettings.status() != QSettings::NoError) {
+        qDebug() << settingsFilepath << "could not be loaded by QSettings";
+        return;
+    }
+
+    const char* arrayOptionName[] = {
+        "MMGT_OPT",
+        "MMGT_CLEAR",
+        "MMGT_REENTRANT",
+        "CSF_LANGUAGE",
+        "CSF_EXCEPTION_PROMPT"
+    };
+    const char* arrayPathName[] = {
+        "CSF_SHMessage",
+        "CSF_MDTVTexturesDirectory",
+        "CSF_ShadersDirectory",
+        "CSF_XSMessage",
+        "CSF_TObjMessage",
+        "CSF_StandardDefaults",
+        "CSF_PluginDefaults",
+        "CSF_XCAFDefaults",
+        "CSF_TObjDefaults",
+        "CSF_StandardLiteDefaults",
+        "CSF_IGESDefaults",
+        "CSF_STEPDefaults",
+        "CSF_XmlOcafResource",
+        "CSF_MIGRATION_TYPES"
+    };
+
+    // Process options
+    for (const char* varName : arrayOptionName) {
+        const QLatin1String qVarName(varName);
+        if (!occSettings.contains(qVarName))
+            continue;
+
+        const QString strValue = occSettings.value(qVarName).toString();
+        qputenv(varName, strValue.toUtf8());
+        qDebug().noquote() << QString("%1 = %2").arg(qVarName).arg(strValue);
+    }
+
+    // Process paths
+    for (const char* varName : arrayPathName) {
+        const QLatin1String qVarName(varName);
+        if (!occSettings.contains(qVarName))
+            continue;
+
+        QString strPath = occSettings.value(qVarName).toString();
+        if (QFileInfo(strPath).isRelative())
+            strPath = QCoreApplication::applicationDirPath() + QDir::separator() + strPath;
+
+        strPath = QDir::toNativeSeparators(strPath);
+        qputenv(varName, strPath.toUtf8());
+        qDebug().noquote() << QString("%1 = %2").arg(qVarName).arg(strPath);
+    }
 }
 
 void Application::NewDocument(
@@ -123,6 +209,8 @@ void Application::InitDocument(const opencascade::handle<TDocStd_Document>& doc)
 Application::Application()
     : QObject(nullptr)
 {
+    qRegisterMetaType<TreeNodeId>("Mayo::TreeNodeId");
+    qRegisterMetaType<TreeNodeId>("TreeNodeId");
 }
 
 void Application::notifyDocumentAboutToClose(Document::Identifier docIdent)
@@ -141,8 +229,45 @@ void Application::addDocument(const DocumentPtr& doc)
         m_mapIdentifierDocument.insert({ doc->identifier(), doc });
         this->InitDocument(doc);
         doc->initXCaf();
+
+        QObject::connect(
+                    doc.get(), &Document::entityAdded,
+                    this, [=](TreeNodeId entityId) { emit this->documentEntityAdded(doc, entityId); });
+        QObject::connect(
+                    doc.get(), &Document::entityAboutToBeDestroyed,
+                    this, [=](TreeNodeId entityId) { emit this->documentEntityAboutToBeDestroyed(doc, entityId); });
+//      QObject::connect(
+//                  doc, &Document::itemPropertyChanged,
+//                  this, &Application::documentItemPropertyChanged);
         emit documentAdded(doc);
     }
+}
+
+Application::DocumentIterator::DocumentIterator(const ApplicationPtr&)
+    : CDF_DirectoryIterator(CDF_Session::CurrentSession()->Directory())
+{
+}
+
+Application::DocumentIterator::DocumentIterator(const Application*)
+    : CDF_DirectoryIterator(CDF_Session::CurrentSession()->Directory())
+{
+
+}
+
+bool Application::DocumentIterator::hasNext() const
+{
+    return const_cast<DocumentIterator*>(this)->MoreDocument();
+}
+
+void Application::DocumentIterator::next()
+{
+    this->NextDocument();
+    ++m_currentIndex;
+}
+
+DocumentPtr Application::DocumentIterator::current() const
+{
+    return DocumentPtr::DownCast(const_cast<DocumentIterator*>(this)->Document());
 }
 
 } // namespace Mayo

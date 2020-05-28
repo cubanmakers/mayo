@@ -14,7 +14,7 @@ Enumeration::Enumeration(std::initializer_list<Item> listItem)
 {
 }
 
-void Enumeration::addItem(Value value, const QString& name, const QString& text)
+void Enumeration::addItem(Value value, const QByteArray& name, const QString& text)
 {
     const Item item = { value, name, text };
     m_vecItem.emplace_back(std::move(item));
