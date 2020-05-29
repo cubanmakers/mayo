@@ -28,7 +28,7 @@ public:
 
     void clear();
     TreeNodeId appendChild(TreeNodeId parentId, const T& data);
-    void remove(TreeNodeId id);
+    void removeRoot(TreeNodeId id);
 
 private:
     struct TreeNode {
@@ -38,7 +38,11 @@ private:
         TreeNodeId childLast;
         TreeNodeId parent;
         T data;
+        bool isDeleted;
     };
+
+    template<typename T, typename FN>
+    friend void deepForeachTreeNode(TreeNodeId node, const Tree<T>& tree, const FN& callback);
 
     TreeNodeId lastNodeId() const;
     TreeNode* ptrNode(TreeNodeId id);
@@ -48,11 +52,11 @@ private:
     std::vector<TreeNodeId> m_vecRoot;
 };
 
-template<typename T, typename FUNC>
-void deepForeachTreeNode(const Tree<T>& tree, const FUNC& func);
+template<typename T, typename FN>
+void deepForeachTreeNode(const Tree<T>& tree, const FN& callback);
 
-template<typename T, typename FUNC>
-void deepForeachTreeNode(TreeNodeId node, const Tree<T>& tree, const FUNC& func);
+template<typename T, typename FN>
+void deepForeachTreeNode(TreeNodeId node, const Tree<T>& tree, const FN& callback);
 
 
 
@@ -131,9 +135,17 @@ TreeNodeId Tree<T>::appendChild(TreeNodeId parentId, const T& data)
     return nodeId;
 }
 
-template<typename T> void Tree<T>::remove(TreeNodeId id)
+template<typename T> void Tree<T>::removeRoot(TreeNodeId id)
 {
-    Expects(false && "not implemented yet");
+    Expects(this->nodeIsRoot(id));
+
+    auto it = std::find(m_vecRoot.begin(), m_vecRoot.end(), id);
+    if (it != m_vecRoot.end()) {
+        TreeNode* node = this->ptrNode(id);
+        Expects(node != nullptr);
+        node->isDeleted = true;
+        m_vecRoot.erase(it);
+    }
 }
 
 template<typename T>
@@ -158,20 +170,23 @@ const typename Tree<T>::TreeNode* Tree<T>::ptrNode(TreeNodeId id) const
     return id != 0 && id <= m_vecNode.size() ? &m_vecNode.at(id - 1) : nullptr;
 }
 
-template<typename T, typename FUNC>
-void deepForeachTreeNode(TreeNodeId node, const Tree<T>& tree, const FUNC& func)
+template<typename T, typename FN>
+void deepForeachTreeNode(TreeNodeId node, const Tree<T>& tree, const FN& callback)
 {
-    func(node);
+    const Tree<T>::TreeNode* ptrNode = tree.ptrNode(node);
+    if (ptrNode && !ptrNode->isDeleted)
+        callback(node);
+
     const TreeNodeId childFirst = tree.nodeChildFirst(node);
     for (auto it = childFirst; it != 0; it = tree.nodeSiblingNext(it))
-        deepForeachTreeNode(it, tree, func);
+        deepForeachTreeNode(it, tree, callback);
 }
 
-template<typename T, typename FUNC>
-void deepForeachTreeNode(const Tree<T>& tree, const FUNC& func)
+template<typename T, typename FN>
+void deepForeachTreeNode(const Tree<T>& tree, const FN& callback)
 {
     for (TreeNodeId node : tree.roots())
-        deepForeachTreeNode(node, tree, func);
+        deepForeachTreeNode(node, tree, callback);
 }
 
 } // namespace Mayo

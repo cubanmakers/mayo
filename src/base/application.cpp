@@ -211,6 +211,8 @@ Application::Application()
 {
     qRegisterMetaType<TreeNodeId>("Mayo::TreeNodeId");
     qRegisterMetaType<TreeNodeId>("TreeNodeId");
+    qRegisterMetaType<DocumentPtr>("Mayo::DocumentPtr");
+    qRegisterMetaType<DocumentPtr>("DocumentPtr");
 }
 
 void Application::notifyDocumentAboutToClose(Document::Identifier docIdent)
@@ -230,6 +232,9 @@ void Application::addDocument(const DocumentPtr& doc)
         this->InitDocument(doc);
         doc->initXCaf();
 
+        QObject::connect(
+                    doc.get(), &Document::nameChanged,
+                    this, [=](const QString& name) { emit this->documentNameChanged(doc, name); });
         QObject::connect(
                     doc.get(), &Document::entityAdded,
                     this, [=](TreeNodeId entityId) { emit this->documentEntityAdded(doc, entityId); });

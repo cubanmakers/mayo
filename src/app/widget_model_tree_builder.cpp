@@ -30,16 +30,20 @@ void WidgetModelTreeBuilder::refreshTextTreeItem(const DocumentTreeNode& node, Q
     treeItem->setText(0, WidgetModelTreeBuilder::labelText(node.label()));
 }
 
-void WidgetModelTreeBuilder::fillTreeItem(QTreeWidgetItem* treeItem, const DocumentPtr& doc)
+QTreeWidgetItem* WidgetModelTreeBuilder::createTreeItem(const DocumentPtr& doc)
 {
+    auto treeItem = new QTreeWidgetItem;
     treeItem->setText(0, WidgetModelTreeBuilder::labelText(doc->name()));
     treeItem->setIcon(0, mayoTheme()->icon(Theme::Icon::File));
     treeItem->setToolTip(0, doc->filePath());
+    return treeItem;
 }
 
-void WidgetModelTreeBuilder::fillTreeItem(QTreeWidgetItem* treeItem, const DocumentTreeNode& node)
+QTreeWidgetItem* WidgetModelTreeBuilder::createTreeItem(const DocumentTreeNode& node)
 {
+    auto treeItem = new QTreeWidgetItem;
     treeItem->setText(0, WidgetModelTreeBuilder::labelText(node.label()));
+    return treeItem;
 }
 
 void WidgetModelTreeBuilder::loadConfiguration(const Settings*, const QString&)

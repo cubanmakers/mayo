@@ -20,7 +20,7 @@ public:
 
     bool supportsEntity(const DocumentTreeNode& node) const override;
     void refreshTextTreeItem(const DocumentTreeNode& node, QTreeWidgetItem* treeItem) override;
-    void fillTreeItem(QTreeWidgetItem* treeItem, const DocumentTreeNode& node) override;
+    QTreeWidgetItem* createTreeItem(const DocumentTreeNode& node) override;
 
     void loadConfiguration(const Settings* settings, const QString& keyGroup) override;
     void saveConfiguration(Settings* settings, const QString& keyGroup) override;
@@ -38,7 +38,7 @@ private:
     static QTreeWidgetItem* guiCreateXdeTreeNode(
             QTreeWidgetItem* guiParentNode, const DocumentTreeNode& node);
 
-    void buildXdeTree(QTreeWidgetItem* treeItem, const DocumentTreeNode& node);
+    QTreeWidgetItem* buildXdeTree(QTreeWidgetItem* treeItem, const DocumentTreeNode& node);
     void refreshXdeAssemblyNodeItemText(QTreeWidgetItem* item);
     QString referenceItemText(const TDF_Label& refLabel, const TDF_Label& referredLabel) const;
     QTreeWidgetItem* findTreeItem(QTreeWidgetItem* parentTreeItem, const TDF_Label& label) const;

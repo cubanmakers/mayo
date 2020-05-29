@@ -65,6 +65,7 @@ public: //  from TDocStd_Application
 signals:
     void documentAdded(const DocumentPtr& doc);
     void documentAboutToClose(const DocumentPtr& doc);
+    void documentNameChanged(const DocumentPtr& doc, const QString& name);
     void documentEntityAdded(const DocumentPtr& doc, TreeNodeId entityId);
     void documentEntityAboutToBeDestroyed(const DocumentPtr& doc, TreeNodeId entityId);
 

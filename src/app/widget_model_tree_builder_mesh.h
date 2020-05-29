@@ -13,8 +13,7 @@ namespace Mayo {
 class WidgetModelTreeBuilder_Mesh : public WidgetModelTreeBuilder {
 public:
     bool supportsEntity(const DocumentTreeNode& node) const override;
-    void fillTreeItem(QTreeWidgetItem* treeItem, const DocumentTreeNode& node) override;
-
+    QTreeWidgetItem* createTreeItem(const DocumentTreeNode& node) override;
     WidgetModelTreeBuilder* clone() const override;
 };
 

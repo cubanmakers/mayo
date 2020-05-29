@@ -10,6 +10,7 @@
 #include "test.h"
 #include "../src/base/application.h"
 #include "../src/base/brep_utils.h"
+#include "../src/base/caf_utils.h"
 #include "../src/base/io.h"
 #include "../src/base/libtree.h"
 #include "../src/base/geom_utils.h"
@@ -25,6 +26,7 @@
 #include <GCPnts_TangentialDeflection.hxx>
 #include <QtCore/QFile>
 #include <QtCore/QtDebug>
+#include <QtTest/QSignalSpy>
 #include <cmath>
 #include <cstring>
 #include <utility>
@@ -48,6 +50,45 @@ static bool operator==(
     return std::abs(lhs.value - rhs.value) < 1e-6
             && std::strcmp(lhs.strUnit, rhs.strUnit) == 0
             && std::abs(lhs.factor - rhs.factor) < 1e-6;
+}
+
+void Test::Application_test()
+{
+    auto app = Application::instance();
+    QCOMPARE(app->documentCount(), 0);
+
+    {   // Add & remove a document
+        QSignalSpy sigSpy_documentAdded(app.get(), &Application::documentAdded);
+        DocumentPtr doc = app->newDocument();
+        QVERIFY(!doc.IsNull());
+        QCOMPARE(sigSpy_documentAdded.count(), 1);
+        QCOMPARE(app->documentCount(), 1);
+        QCOMPARE(app->findIndexOfDocument(doc), 0);
+        QCOMPARE(app->findDocumentByIndex(0).get(), doc.get());
+        QCOMPARE(app->findDocumentByIdentifier(doc->identifier()).get(), doc.get());
+
+        QSignalSpy sigSpy_documentAboutToClose(app.get(), &Application::documentAboutToClose);
+        app->closeDocument(doc);
+        QCOMPARE(sigSpy_documentAboutToClose.count(), 1);
+        QCOMPARE(app->documentCount(), 0);
+    }
+
+    {   // Add & remove an entity
+        DocumentPtr doc = app->newDocument();
+        QCOMPARE(doc->entityCount(), 0);
+        QSignalSpy sigSpy_docEntityAdded(doc.get(), &Document::entityAdded);
+        const IO::Result ioRes = IO::instance()->importInDocument(doc, IO::PartFormat::Step, "inputs/cube.step");
+        QVERIFY(ioRes.valid());
+        QCOMPARE(sigSpy_docEntityAdded.count(), 1);
+        QCOMPARE(doc->entityCount(), 1);
+        QVERIFY(XCaf::isShape(doc->entityLabel(0)));
+        QCOMPARE(CafUtils::labelAttrStdName(doc->entityLabel(0)), "Cube");
+
+        QSignalSpy sigSpy_docEntityAboutToBeDestroyed(doc.get(), &Document::entityAboutToBeDestroyed);
+        doc->destroyEntity(doc->entityTreeNodeId(0));
+        QCOMPARE(sigSpy_docEntityAboutToBeDestroyed.count(), 1);
+        QCOMPARE(doc->entityCount(), 0);
+    }
 }
 
 void Test::IO_test()

@@ -15,6 +15,7 @@ class Test : public QObject {
     Q_OBJECT
 
 private slots:
+    void Application_test();
     void IO_test();
     void IO_test_data();
     void BRepUtils_test();

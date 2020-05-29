@@ -7,6 +7,7 @@
 #pragma once
 
 #include "document_ptr.h"
+#include "document_tree_node.h"
 #include "libtree.h"
 #include "xcaf.h"
 #include <QtCore/QObject>
@@ -20,7 +21,7 @@ class DocumentTreeNode;
 class Document : public QObject, public TDocStd_Document {
     Q_OBJECT
     Q_PROPERTY(int identifier READ identifier)
-    Q_PROPERTY(QString name READ name WRITE setName)
+    Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged)
     Q_PROPERTY(bool isXCafDocument READ isXCafDocument)
 public:
     using Identifier = int;
@@ -29,7 +30,7 @@ public:
     Identifier identifier() const { return m_identifier; }
 
     QString name() const;
-    void setName(const QString& v);
+    void setName(const QString& name);
 
     QString filePath() const;
     void setFilePath(const QString& filepath);
@@ -47,6 +48,10 @@ public:
 
     TDF_Label rootLabel() const;
     bool isEntity(TreeNodeId nodeId);
+    int entityCount() const;
+    TDF_Label entityLabel(int index) const;
+    TreeNodeId entityTreeNodeId(int index) const;
+    DocumentTreeNode entityTreeNode(int index) const;
 
     const Tree<TDF_Label>& modelTree() const { return m_modelTree; }
     void rebuildModelTree();
@@ -65,10 +70,9 @@ public: // -- from TDocStd_Document
     DEFINE_STANDARD_RTTI_INLINE(Document, TDocStd_Document)
 
 signals:
-    //void entityAdded(const TDF_Label& labelEntity);
+    void nameChanged(const QString& name);
     void entityAdded(TreeNodeId entityTreeNodeId);
     void entityAboutToBeDestroyed(TreeNodeId entityTreeNodeId);
-    //void itemErased(const DocumentItem* docItem);
     //void itemPropertyChanged(DocumentItem* docItem, Property* prop);
 
 private:

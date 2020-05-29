@@ -72,12 +72,10 @@ void WidgetModelTreeBuilder_Xde::refreshTextTreeItem(
     }
 }
 
-void WidgetModelTreeBuilder_Xde::fillTreeItem(QTreeWidgetItem* treeItem, const DocumentTreeNode& node)
+QTreeWidgetItem* WidgetModelTreeBuilder_Xde::createTreeItem(const DocumentTreeNode& node)
 {
-    WidgetModelTreeBuilder::fillTreeItem(treeItem, node);
     Expects(this->supportsEntity(node));
-    treeItem->setIcon(0, mayoTheme()->icon(Theme::Icon::ItemXde));
-    this->buildXdeTree(treeItem, node);
+    return this->buildXdeTree(nullptr, node);
 }
 
 QTreeWidgetItem* WidgetModelTreeBuilder_Xde::guiCreateXdeTreeNode(
@@ -94,7 +92,8 @@ QTreeWidgetItem* WidgetModelTreeBuilder_Xde::guiCreateXdeTreeNode(
     return guiNode;
 }
 
-void WidgetModelTreeBuilder_Xde::buildXdeTree(QTreeWidgetItem* treeItem, const DocumentTreeNode& node)
+QTreeWidgetItem* WidgetModelTreeBuilder_Xde::buildXdeTree(
+        QTreeWidgetItem* treeItem, const DocumentTreeNode& node)
 {
     Expects(node.isEntity());
 
@@ -137,6 +136,8 @@ void WidgetModelTreeBuilder_Xde::buildXdeTree(QTreeWidgetItem* treeItem, const D
             mapNodeIdToTreeItem.insert({ itNodeId, guiNode });
         }
     });
+
+    return mapNodeIdToTreeItem.find(node.id())->second;
 }
 
 const QString& WidgetModelTreeBuilder_Xde::referenceItemTextTemplate() const

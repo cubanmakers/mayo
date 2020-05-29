@@ -100,17 +100,13 @@ GuiDocument::GuiDocument(const DocumentPtr& doc)
                 0.075,
                 V3d_ZBUFFER);
 
-    if (doc->isXCafDocument()) {
-        const TDF_LabelSequence seqFreeShape = doc->xcaf().topLevelFreeShapes();
-        for (const TDF_Label& label : seqFreeShape) {
-            this->mapGraphics(label);
-        }
-
-        // TODO Iterate over top-level non-shape labels
-    }
+    for (int i = 0; i < doc->entityCount(); ++i)
+        this->mapGraphics(doc->entityTreeNodeId(i));
 
     QObject::connect(doc.get(), &Document::entityAdded, this, &GuiDocument::onDocumentEntityAdded);
-//    QObject::connect(doc, &Document::itemErased, this, &GuiDocument::onItemErased);
+    QObject::connect(
+                doc.get(), &Document::entityAboutToBeDestroyed,
+                this, &GuiDocument::onDocumentEntityAboutToBeDestroyed);
 }
 
 const DocumentPtr& GuiDocument::document() const
@@ -194,8 +190,31 @@ void GuiDocument::updateV3dViewer()
 
 void GuiDocument::onDocumentEntityAdded(TreeNodeId entityTreeNodeId)
 {
-    this->mapGraphics(m_document->modelTree().nodeData(entityTreeNodeId));
+    this->mapGraphics(entityTreeNodeId);
     emit gpxBoundingBoxChanged(m_gpxBoundingBox);
+}
+
+void GuiDocument::onDocumentEntityAboutToBeDestroyed(TreeNodeId entityTreeNodeId)
+{
+    auto itFound = std::find_if(
+                m_vecGraphicsItem.begin(),
+                m_vecGraphicsItem.end(),
+                [=](const GraphicsItem& item) { return item.entityTreeNodeId == entityTreeNodeId; });
+    if (itFound != m_vecGraphicsItem.end()) {
+        const GraphicsEntity& gfxEntity = itFound->graphicsEntity;
+        GpxUtils::AisContext_eraseObject(m_aisContext, gfxEntity.aisObject());
+        m_vecGraphicsItem.erase(itFound);
+        this->updateV3dViewer();
+
+        // Recompute bounding box
+        m_gpxBoundingBox.SetVoid();
+        for (const GraphicsItem& item : m_vecGraphicsItem) {
+            const Bnd_Box entityBndBox = GpxUtils::AisObject_boundingBox(item.graphicsEntity.aisObject());
+            BndUtils::add(&m_gpxBoundingBox, entityBndBox);
+        }
+
+        emit gpxBoundingBoxChanged(m_gpxBoundingBox);
+    }
 }
 
 std::vector<Handle_SelectMgr_EntityOwner> GuiDocument::selectedEntityOwners() const
@@ -210,34 +229,14 @@ std::vector<Handle_SelectMgr_EntityOwner> GuiDocument::selectedEntityOwners() co
     return vecOwner;
 }
 
-//void GuiDocument::onItemErased(const DocumentItem* item)
-//{
-//    auto itFound = std::find_if(
-//                m_vecGuiDocumentItem.begin(),
-//                m_vecGuiDocumentItem.end(),
-//                [=](const GuiDocumentItem& guiItem) { return guiItem.docItem == item; });
-//    if (itFound != m_vecGuiDocumentItem.end()) {
-//        // Delete gpx item
-//        m_vecGuiDocumentItem.erase(itFound);
-//        this->updateV3dViewer();
-
-//        // Recompute bounding box
-//        m_gpxBoundingBox.SetVoid();
-//        for (const GuiDocumentItem& guiItem : m_vecGuiDocumentItem) {
-//            const Bnd_Box otherBox = guiItem.gpxDocItem->boundingBox();
-//            BndUtils::add(&m_gpxBoundingBox, otherBox);
-//        }
-
-//        emit gpxBoundingBoxChanged(m_gpxBoundingBox);
-//    }
-//}
-
-void GuiDocument::mapGraphics(const TDF_Label& label)
+void GuiDocument::mapGraphics(TreeNodeId entityTreeNodeId)
 {
     GraphicsItem item;
-    item.graphicsEntity = GraphicsEntityDriverTable::instance()->createEntity(label);
+    const TDF_Label entityLabel = m_document->modelTree().nodeData(entityTreeNodeId);
+    item.graphicsEntity = GraphicsEntityDriverTable::instance()->createEntity(entityLabel);
     item.graphicsEntity.setAisContext(m_aisContext);
     item.graphicsEntity.setVisible(true);
+    item.entityTreeNodeId = entityTreeNodeId;
     m_aisContext->UpdateCurrentViewer();
 //    if (sameType<XdeDocumentItem>(item)) {
 //        gpxItem->activateSelection(GpxXdeDocumentItem::SelectVertex);

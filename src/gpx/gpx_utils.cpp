@@ -24,7 +24,7 @@ void GpxUtils::V3dView_fitAll(const Handle_V3d_View& view)
 }
 
 bool GpxUtils::V3dView_hasClipPlane(
-        const Handle_V3d_View &view, const Handle_Graphic3d_ClipPlane& plane)
+        const Handle_V3d_View& view, const Handle_Graphic3d_ClipPlane& plane)
 {
     const Handle_Graphic3d_SequenceOfHClipPlane& seqClipPlane = view->ClipPlanes();
     if (seqClipPlane.IsNull() || seqClipPlane->Size() == 0)
@@ -39,8 +39,7 @@ bool GpxUtils::V3dView_hasClipPlane(
     return false;
 }
 
-gp_Pnt GpxUtils::V3dView_to3dPosition(
-        const Handle_V3d_View& view, double x, double y)
+gp_Pnt GpxUtils::V3dView_to3dPosition(const Handle_V3d_View& view, double x, double y)
 {
     double xEye, yEye, zEye, xAt, yAt, zAt;
     view->Eye(xEye, yEye, zEye);

@@ -48,13 +48,14 @@ signals:
 
 private:
     void onDocumentEntityAdded(TreeNodeId entityTreeNodeId);
-//    void onItemErased(const DocumentItem* item);
+    void onDocumentEntityAboutToBeDestroyed(TreeNodeId entityTreeNodeId);
 
-    void mapGraphics(const TDF_Label& label);
+    void mapGraphics(TreeNodeId entityTreeNodeId);
 
     using ArrayGraphicsEntityOwner = std::vector<Handle_SelectMgr_EntityOwner>;
     struct GraphicsItem {
         GraphicsEntity graphicsEntity;
+        TreeNodeId entityTreeNodeId;
         ArrayGraphicsEntityOwner vecGpxEntityOwner;
         Handle_SelectMgr_EntityOwner findBrepOwner(const TopoDS_Face& face) const;
     };

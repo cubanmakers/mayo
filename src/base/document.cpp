@@ -31,9 +31,10 @@ QString Document::name() const
     return m_name;
 }
 
-void Document::setName(const QString& v)
+void Document::setName(const QString& name)
 {
-    m_name = v;
+    m_name = name;
+    emit this->nameChanged(name);
 }
 
 QString Document::filePath() const
@@ -73,6 +74,26 @@ TDF_Label Document::rootLabel() const
 bool Document::isEntity(TreeNodeId nodeId)
 {
     return m_modelTree.nodeIsRoot(nodeId);
+}
+
+int Document::entityCount() const
+{
+    return m_modelTree.roots().size();
+}
+
+TDF_Label Document::entityLabel(int index) const
+{
+    return m_modelTree.nodeData(this->entityTreeNodeId(index));
+}
+
+TreeNodeId Document::entityTreeNodeId(int index) const
+{
+    return m_modelTree.roots().at(index);
+}
+
+DocumentTreeNode Document::entityTreeNode(int index) const
+{
+    return { DocumentPtr(this), this->entityTreeNodeId(index) };
 }
 
 void Document::rebuildModelTree()
@@ -156,7 +177,7 @@ void Document::destroyEntity(TreeNodeId entityTreeNodeId)
     emit this->entityAboutToBeDestroyed(entityTreeNodeId);
     entityLabel.ForgetAllAttributes();
     entityLabel.Nullify();
-    m_modelTree.remove(entityTreeNodeId);
+    m_modelTree.removeRoot(entityTreeNodeId);
 }
 
 void Document::BeforeClose()

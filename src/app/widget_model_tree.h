@@ -39,6 +39,7 @@ public:
 
     static DocumentTreeNode documentTreeNode(const QTreeWidgetItem* treeItem);
     static void setDocumentTreeNode(QTreeWidgetItem* treeItem, const DocumentTreeNode& node);
+    static void setDocument(QTreeWidgetItem* treeItem, const DocumentPtr& doc);
 
     static bool holdsDocument(const QTreeWidgetItem* treeItem);
     static bool holdsDocumentTreeNode(const QTreeWidgetItem* treeItem);
@@ -47,6 +48,7 @@ private:
     void onDocumentAdded(const DocumentPtr& doc);
     void onDocumentAboutToClose(const DocumentPtr& doc);
     //void onDocumentPropertyChanged(Document* doc, Property* prop);
+    void onDocumentNameChanged(const DocumentPtr& doc, const QString& name);
     void onDocumentEntityAdded(const DocumentPtr& doc, TreeNodeId entityId);
     void onDocumentEntityAboutToBeDestroyed(const DocumentPtr& doc, TreeNodeId entityId);
     //void onDocumentEntityPropertyChanged(DocumentItem* docItem, Property* prop);

@@ -19,11 +19,13 @@ bool WidgetModelTreeBuilder_Mesh::supportsEntity(const DocumentTreeNode& node) c
     return CafUtils::hasAttribute<TDataXtd_Triangulation>(node.label());
 }
 
-void WidgetModelTreeBuilder_Mesh::fillTreeItem(QTreeWidgetItem* treeItem, const DocumentTreeNode& node)
+QTreeWidgetItem* WidgetModelTreeBuilder_Mesh::createTreeItem(const DocumentTreeNode& node)
 {
-    WidgetModelTreeBuilder::fillTreeItem(treeItem, node);
     Expects(this->supportsEntity(node));
+
+    auto treeItem = WidgetModelTreeBuilder::createTreeItem(node);
     treeItem->setIcon(0, mayoTheme()->icon(Theme::Icon::ItemMesh));
+    return treeItem;
 }
 
 WidgetModelTreeBuilder* WidgetModelTreeBuilder_Mesh::clone() const

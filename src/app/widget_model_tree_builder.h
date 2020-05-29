@@ -31,8 +31,8 @@ public:
     virtual void refreshTextTreeItem(const DocumentPtr& doc, QTreeWidgetItem* treeItem);
     virtual void refreshTextTreeItem(const DocumentTreeNode& node, QTreeWidgetItem* treeItem);
 
-    virtual void fillTreeItem(QTreeWidgetItem* treeItem, const DocumentPtr& doc);
-    virtual void fillTreeItem(QTreeWidgetItem* treeItem, const DocumentTreeNode& node);
+    virtual QTreeWidgetItem* createTreeItem(const DocumentPtr& doc);
+    virtual QTreeWidgetItem* createTreeItem(const DocumentTreeNode& node);
 
     QTreeWidget* treeWidget() const { return m_treeWidget; }
     void setTreeWidget(QTreeWidget* tree) { m_treeWidget = tree; }
